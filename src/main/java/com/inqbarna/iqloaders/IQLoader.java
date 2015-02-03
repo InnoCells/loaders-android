@@ -18,6 +18,7 @@ public abstract class IQLoader<T> extends AsyncTaskLoader<IQProvider<T>> {
 
     // We hold a reference to the Loader's data here.
     protected IQProvider<T> mData;
+    private boolean registeredDataObserver;
 
     /**
      * @param ctx - Current context.
@@ -61,8 +62,11 @@ public abstract class IQLoader<T> extends AsyncTaskLoader<IQProvider<T>> {
             deliverResult(mData);
         }
 
-        // Begin monitoring the underlying data source.
-        onRegisterDataObserver();
+        if (!registeredDataObserver) {
+            // Begin monitoring the underlying data source.
+            registeredDataObserver = true;
+            onRegisterDataObserver();
+        }
 
         if (takeContentChanged() || mData == null) {
             // When the observer detects a change, it should call onContentChanged()
@@ -109,7 +113,10 @@ public abstract class IQLoader<T> extends AsyncTaskLoader<IQProvider<T>> {
         mData = null;
 
         // The Loader is being reset, so we should stop monitoring for changes.
-        onUnregisterDataObserver();
+        if (registeredDataObserver) {
+            onUnregisterDataObserver();
+            registeredDataObserver = false;
+        }
     }
 
     /**
