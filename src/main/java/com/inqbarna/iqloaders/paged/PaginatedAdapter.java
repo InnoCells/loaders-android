@@ -91,7 +91,7 @@ public abstract class PaginatedAdapter<T> extends BaseAdapter {
 	}
 
 	@Override
-	public final View getView(int position, View convertView, ViewGroup parent) {
+	public View getView(int position, View convertView, ViewGroup parent) {
 		if (!completed && position == getCount()-1) {
 			if (convertView == null) {
 				final ProgressBar progressBar = new ProgressBar(context);
