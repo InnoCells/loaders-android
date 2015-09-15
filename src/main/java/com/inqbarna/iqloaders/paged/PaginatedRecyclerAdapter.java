@@ -86,7 +86,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         }
     }
 
-    private T getItem(int position) {
+    public T getItem(int position) {
         return items.get(position);
     }
     protected List<T> getItems() {
