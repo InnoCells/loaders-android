@@ -12,7 +12,7 @@ import java.util.List;
 public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<T>> extends RecyclerView.Adapter<VH> {
 
     private static final int PROGRESS_TYPE = 0;
-    private static final int FIRST_USER_TYPE = 1;
+    protected static final int ITEM_TYPE = 1;
     private List<T> items;
     private boolean completed;
     private final Context context;
@@ -58,7 +58,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
     @Override
     public VH onCreateViewHolder(ViewGroup parent, int viewType) {
         // switch type
-        switch(viewType) {
+        switch (viewType) {
             case PROGRESS_TYPE:
                 return getLastElemHolder(parent);
             default:
@@ -68,6 +68,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
     }
 
     protected abstract VH getLastElemHolder(ViewGroup parent);
+
     protected abstract VH getHolderForType(ViewGroup parent, int viewType);
 
 
@@ -80,7 +81,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
                     listener.onLastItemShowed();
                 }
                 break;
-            default:
+            case ITEM_TYPE:
                 holder.bindTo(getItem(position));
                 break;
         }
@@ -89,13 +90,14 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
     public T getItem(int position) {
         return items.get(position);
     }
+
     protected List<T> getItems() {
         return items;
     }
 
     @Override
     public int getItemViewType(int position) {
-        if (!completed && position == getItemCount()-1) {
+        if (!completed && position == getItemCount() - (getItemCount() - getActualElementCount())) {
             return PROGRESS_TYPE;
         } else {
             return getItemTypeForPos(position);
@@ -103,7 +105,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
     }
 
     protected int getItemTypeForPos(int pos) {
-        return FIRST_USER_TYPE;
+        return ITEM_TYPE;
     }
 
     @Override
