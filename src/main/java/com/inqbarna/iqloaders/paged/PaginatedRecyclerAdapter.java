@@ -4,6 +4,7 @@ import android.content.Context;
 import android.support.v7.widget.RecyclerView;
 import android.view.ViewGroup;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -118,5 +119,21 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         if (null == items)
             return 0;
         return items.size();
+    }
+    public void removeItem(int pos){
+        List<T> list = new ArrayList<>();
+        list.addAll(items);
+        list.remove(pos);
+        items = list;
+        notifyDataSetChanged();
+    }
+
+    public void updateItem(T item) {
+        List<T> list = new ArrayList<>();
+        list.addAll(items);
+        list.set(list.indexOf(item), item);
+        items = list;
+        notifyDataSetChanged();
+
     }
 }

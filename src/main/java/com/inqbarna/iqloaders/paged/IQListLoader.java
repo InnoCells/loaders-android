@@ -3,7 +3,8 @@ package com.inqbarna.iqloaders.paged;
 import android.content.Context;
 import android.support.v4.content.AsyncTaskLoader;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class IQListLoader<T> extends AsyncTaskLoader<PaginatedList<T>> {
 
@@ -59,7 +60,6 @@ public abstract class IQListLoader<T> extends AsyncTaskLoader<PaginatedList<T>> 
             page = mData.getLastPage() + 1;
             data = new PaginatedList<T>(mData);
         }
-
         PageProvider<T> listPageProvider = loadInBackground(page);
 
 
@@ -72,6 +72,32 @@ public abstract class IQListLoader<T> extends AsyncTaskLoader<PaginatedList<T>> 
         return data;
     }
 
+    public void removeItem(T item) {
+        try {
+            if(mData!=null) {
+                List<T> list = new ArrayList<>();
+                list.addAll(mData.getList());
+                list.remove(item);
+                mData.updateList(list);
+            }
+        } catch (ListLoaderException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateItem(T item) {
+        try {
+            if(mData!=null) {
+                List<T> list = new ArrayList<>();
+                list.addAll(mData.getList());
+                list.set(list.indexOf(item), item);
+
+                mData.updateList(list);
+            }
+        } catch (ListLoaderException e) {
+            e.printStackTrace();
+        }
+    }
 	public abstract PageProvider<T> loadInBackground(int page);
 
 	public void loadNextPage() {

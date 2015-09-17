@@ -87,4 +87,7 @@ public class PaginatedList<U> {
             exception = new IQListLoader.ListLoaderException(e);
         }
     }
+    public void updateList(List<U> newList) {
+        list = newList;
+    }
 }
