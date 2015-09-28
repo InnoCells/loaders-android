@@ -136,4 +136,21 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         notifyDataSetChanged();
 
     }
+    public void addItem(T item) {
+        List<T> list = new ArrayList<>();
+        list.addAll(items);
+        list.add(item);
+
+        items = list;
+        notifyDataSetChanged();
+    }
+
+    public void addItem(T item, int pos) {
+        List<T> list = new ArrayList<>();
+        list.addAll(items);
+        list.add(pos, item);
+
+        items = list;
+        notifyDataSetChanged();
+    }
 }
