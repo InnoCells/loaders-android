@@ -85,6 +85,31 @@ public abstract class IQListLoader<T> extends AsyncTaskLoader<PaginatedList<T>> 
         }
     }
 
+    public void addItem(T item) {
+        try {
+            if(mData!=null) {
+                List<T> list = new ArrayList<>();
+                list.addAll(mData.getList());
+                list.add(item);
+                mData.updateList(list);
+            }
+        } catch (ListLoaderException e) {
+            e.printStackTrace();
+        }
+    }
+    public void addItem(T item, int pos) {
+        try {
+            if(mData!=null) {
+                List<T> list = new ArrayList<>();
+                list.addAll(mData.getList());
+                list.add(pos, item);
+                mData.updateList(list);
+            }
+        } catch (ListLoaderException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void updateItem(T item) {
         try {
             if(mData!=null) {
