@@ -16,6 +16,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
     protected static final int ITEM_TYPE = 1;
     private List<T> items;
     private boolean completed;
+    private int numExtraTypes;
     private final Context context;
     private OnLastItemShowedListener listener;
 
@@ -39,6 +40,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         this.context = context;
         this.items = items;
         this.completed = completed;
+        numExtraTypes = 0;
     }
 
     public void updateData(List<T> items, boolean completed) {
@@ -56,6 +58,10 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         return completed;
     }
 
+    protected void setNumExtraTypes(int numExtraTypes) {
+        this.numExtraTypes = numExtraTypes;
+    }
+
     @Override
     public VH onCreateViewHolder(ViewGroup parent, int viewType) {
         // switch type
@@ -71,7 +77,6 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
     protected abstract VH getLastElemHolder(ViewGroup parent);
 
     protected abstract VH getHolderForType(ViewGroup parent, int viewType);
-
 
     @Override
     public void onBindViewHolder(VH holder, int position) {
@@ -98,7 +103,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
 
     @Override
     public int getItemViewType(int position) {
-        if (!completed && position == getItemCount() - (getItemCount() - getActualElementCount())) {
+        if (!completed && position == getItemCount() + numExtraTypes - (getItemCount() - getActualElementCount())) {
             return PROGRESS_TYPE;
         } else {
             return getItemTypeForPos(position);
@@ -120,7 +125,8 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
             return 0;
         return items.size();
     }
-    public void removeItem(int pos){
+
+    public void removeItem(int pos) {
         List<T> list = new ArrayList<>();
         list.addAll(items);
         list.remove(pos);
@@ -136,6 +142,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         notifyDataSetChanged();
 
     }
+
     public void addItem(T item) {
         List<T> list = new ArrayList<>();
         list.addAll(items);
