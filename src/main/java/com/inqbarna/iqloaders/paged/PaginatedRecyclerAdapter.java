@@ -120,6 +120,13 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         return i;
     }
 
+    public void clearData() {
+        if (null != items) {
+            items.clear();
+            notifyDataSetChanged();
+        }
+    }
+
     public int getActualElementCount() {
         if (null == items)
             return 0;
@@ -133,6 +140,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<
         items = list;
         notifyDataSetChanged();
     }
+
     public void removeItem(T item) {
         List<T> list = new ArrayList<>();
         list.addAll(items);
