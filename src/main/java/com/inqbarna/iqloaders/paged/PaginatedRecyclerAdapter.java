@@ -1,7 +1,6 @@
 package com.inqbarna.iqloaders.paged;
 
 import android.support.annotation.Nullable;
-import android.support.v4.widget.ContentLoadingProgressBar;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
@@ -10,7 +9,7 @@ import android.view.View;
  */
 public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHolder> extends RecyclerView.Adapter<VH> {
 
-    private static final int DEFAULT_REQUEST_DISTANCE = 10;
+    private static final int DEFAULT_REQUEST_DISTANCE = 5;
     private PaginatedList<T> mList;
     private ProgressHintListener mProgressHintListener;
 
@@ -60,7 +59,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHo
         mMinRequestDistance = DEFAULT_REQUEST_DISTANCE;
     }
 
-    public void setLoadingProgressBar(@Nullable ProgressHintListener loadingListener) {
+    public void setLoadingIndicatorHint(@Nullable ProgressHintListener loadingListener) {
         mProgressHintListener = loadingListener;
     }
 
