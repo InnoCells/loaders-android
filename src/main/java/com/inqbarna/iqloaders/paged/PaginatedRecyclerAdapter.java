@@ -1,178 +1,98 @@
 package com.inqbarna.iqloaders.paged;
 
-import android.content.Context;
+import android.support.annotation.Nullable;
+import android.support.v4.widget.ContentLoadingProgressBar;
 import android.support.v7.widget.RecyclerView;
-import android.view.ViewGroup;
-
-import java.util.ArrayList;
-import java.util.List;
+import android.view.View;
 
 /**
  * Created by Ricard on 14/9/15.
  */
-public abstract class PaginatedRecyclerAdapter<T, VH extends BindableViewHolder<T>> extends RecyclerView.Adapter<VH> {
+public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHolder> extends RecyclerView.Adapter<VH> {
 
-    private static final int PROGRESS_TYPE = 0;
-    protected static final int ITEM_TYPE = 1;
-    private List<T> items;
-    private boolean completed;
-    private int numExtraTypes;
-    private final Context context;
-    private OnLastItemShowedListener listener;
+    private static final int DEFAULT_REQUEST_DISTANCE = 10;
+    private PaginatedList<T> mList;
+    private ProgressHintListener mProgressHintListener;
 
-    public interface OnLastItemShowedListener {
-        void onLastItemShowed();
+    private boolean mPageRequested;
+    private int mMinRequestDistance;
+
+    public interface ProgressHintListener {
+        void setLoadingState(boolean loading);
     }
 
-    public void setOnLastItemShowedListener(OnLastItemShowedListener listener) {
-        this.listener = listener;
-    }
-
-    public PaginatedRecyclerAdapter(Context ctxt) {
-        this(ctxt, null, false);
-    }
-
-    public PaginatedRecyclerAdapter(Context context, List<T> items) {
-        this(context, items, false);
-    }
-
-    public PaginatedRecyclerAdapter(Context context, List<T> items, boolean completed) {
-        this.context = context;
-        this.items = items;
-        this.completed = completed;
-        numExtraTypes = 0;
-    }
-
-    public void updateData(List<T> items, boolean completed) {
-        updateData(items, completed, true);
-    }
-
-    protected void updateData(List<T> items, boolean completed, boolean withNotify) {
-        this.items = items;
-        this.completed = completed;
-        if (withNotify)
-            notifyDataSetChanged();
-    }
-
-    protected boolean isComplete() {
-        return completed;
-    }
-
-    protected void setNumExtraTypes(int numExtraTypes) {
-        this.numExtraTypes = numExtraTypes;
-    }
-
-    @Override
-    public VH onCreateViewHolder(ViewGroup parent, int viewType) {
-        // switch type
-        switch (viewType) {
-            case PROGRESS_TYPE:
-                return getLastElemHolder(parent);
-            default:
-                return getHolderForType(parent, viewType);
+    private RecyclerView.OnScrollListener mScrollListener = new RecyclerView.OnScrollListener() {
+        @Override
+        public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
         }
 
-    }
+        @Override
+        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+            final int childCount = recyclerView.getChildCount();
+            if (childCount == 0) {
+                return;
+            }
+            final View lastChild = recyclerView.getChildAt(childCount - 1);
+            final int lastVisiblePosition = recyclerView.getChildAdapterPosition(lastChild);
 
-    protected abstract VH getLastElemHolder(ViewGroup parent);
+            if (null != mList && mList.hasMorePages() && (getLastItemPosition() - lastVisiblePosition) <= mMinRequestDistance) {
+                requestNextPage();
+            }
+        }
+    };
 
-    protected abstract VH getHolderForType(ViewGroup parent, int viewType);
-
-    @Override
-    public void onBindViewHolder(VH holder, int position) {
-        int itemViewType = holder.getItemViewType();
-        switch (itemViewType) {
-            case PROGRESS_TYPE:
-                if (listener != null) {
-                    listener.onLastItemShowed();
-                }
-                break;
-            case ITEM_TYPE:
-                holder.bindTo(getItem(position));
-                break;
+    private void requestNextPage() {
+        if (!mPageRequested && null != mList) {
+            mPageRequested = true;
+            if (null != mProgressHintListener) {
+                mProgressHintListener.setLoadingState(true);
+            }
+            mList.requestNext();
         }
     }
 
-    public T getItem(int position) {
-        return items.get(position);
+    public PaginatedRecyclerAdapter() {
+        this(null);
     }
 
-    protected List<T> getItems() {
-        return items;
+    public PaginatedRecyclerAdapter(@Nullable ProgressHintListener loadingListener) {
+        mProgressHintListener = loadingListener;
+        mMinRequestDistance = DEFAULT_REQUEST_DISTANCE;
     }
 
-    @Override
-    public int getItemViewType(int position) {
-        if (!completed && position == getItemCount() + numExtraTypes - (getItemCount() - getActualElementCount())) {
-            return PROGRESS_TYPE;
-        } else {
-            return getItemTypeForPos(position);
+    public void setLoadingProgressBar(@Nullable ProgressHintListener loadingListener) {
+        mProgressHintListener = loadingListener;
+    }
+
+    protected T getItem(int position) {
+        return null != mList ? mList.get(position) : null;
+    }
+
+    public void setItems(PaginatedList<T> items) {
+        mList = items;
+        if (null != mProgressHintListener) {
+            mProgressHintListener.setLoadingState(false);
         }
+        mPageRequested = false;
+        notifyDataSetChanged();
     }
 
-    protected int getItemTypeForPos(int pos) {
-        return ITEM_TYPE;
+    private int getLastItemPosition() {
+        return Math.max(0, getItemCount() - 1);
     }
 
     @Override
     public int getItemCount() {
-        int i = getActualElementCount() + (completed ? 0 : 1);
-        return i;
+        return mList != null ? mList.size() : 0;
     }
 
-    public void clearData() {
-        if (null != items) {
-            items.clear();
-            notifyDataSetChanged();
-        }
+    @Override
+    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
+        recyclerView.addOnScrollListener(mScrollListener);
     }
 
-    public int getActualElementCount() {
-        if (null == items)
-            return 0;
-        return items.size();
-    }
-
-    public void removeItem(int pos) {
-        List<T> list = new ArrayList<>();
-        list.addAll(items);
-        list.remove(pos);
-        items = list;
-        notifyDataSetChanged();
-    }
-
-    public void removeItem(T item) {
-        List<T> list = new ArrayList<>();
-        list.addAll(items);
-        list.remove(item);
-        items = list;
-        notifyDataSetChanged();
-    }
-
-    public void updateItem(T item) {
-        List<T> list = new ArrayList<>();
-        list.addAll(items);
-        list.set(list.indexOf(item), item);
-        items = list;
-        notifyDataSetChanged();
-
-    }
-
-    public void addItem(T item) {
-        List<T> list = new ArrayList<>();
-        list.addAll(items);
-        list.add(item);
-
-        items = list;
-        notifyDataSetChanged();
-    }
-
-    public void addItem(T item, int pos) {
-        List<T> list = new ArrayList<>();
-        list.addAll(items);
-        list.add(pos, item);
-
-        items = list;
-        notifyDataSetChanged();
+    @Override
+    public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
+        recyclerView.removeOnScrollListener(mScrollListener);
     }
 }

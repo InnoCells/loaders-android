@@ -1,15 +1,17 @@
 package com.inqbarna.iqloaders.paged;
 
 import android.content.Context;
-import android.support.v4.content.AsyncTaskLoader;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.inqbarna.iqloaders.IQLoader;
+import com.inqbarna.iqloaders.IQProvider;
+import com.inqbarna.iqloaders.IQProviders;
 
-public abstract class IQListLoader<T> extends AsyncTaskLoader<PaginatedList<T>> {
+public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
-    private static final String TAG = "ListLoader";
-    private final int firstPage;
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    public static final int DEFAULT_FIRST_PAGE = 1;
+    private final int mFirstPage;
+
 
     public static final class ListLoaderException extends Exception {
         public ListLoaderException(Throwable throwable) {
@@ -18,122 +20,60 @@ public abstract class IQListLoader<T> extends AsyncTaskLoader<PaginatedList<T>> 
     }
 
     private PaginatedList<T> mData;
+    private int mPageSize;
 
 
 	public IQListLoader(Context context) {
 		super(context);
-        firstPage = 1;
+        mFirstPage = DEFAULT_FIRST_PAGE;
+        mPageSize = DEFAULT_PAGE_SIZE;
     }
 
-    public IQListLoader(Context ctxt, int firstPage) {
+    public IQListLoader(Context ctxt, int firstPage, int pageSize) {
         super(ctxt);
-        this.firstPage = firstPage;
+        this.mFirstPage = firstPage;
+        mPageSize = pageSize;
     }
 
-
-    @Override
-    public void deliverResult(PaginatedList<T> data) {
-        mData = data;
-
-        super.deliverResult(mData);
+    protected void setPageSize(int pageSize) {
+        mPageSize = pageSize;
     }
 
     @Override
-    protected void onStartLoading() {
-        if (null != mData) {
-            deliverResult(mData);
-        }
-
-        if (takeContentChanged() || null == mData) {
-            forceLoad();
-        }
-    }
-
-
-    @Override
-	public final PaginatedList<T> loadInBackground() {
+	public final IQProvider<PaginatedList<T>> loadInBackground() {
         final int page;
         PaginatedList<T> data = null;
         if (mData == null) {
-            page = firstPage;
+            page = mFirstPage;
         } else {
             page = mData.getLastPage() + 1;
-            data = new PaginatedList<T>(mData);
+            data = new PaginatedList<>(this, mData);
         }
-        PageProvider<T> listPageProvider = loadInBackground(page);
-
-
-        if (null == data) {
-            data = new PaginatedList<T>(listPageProvider);
-        } else {
-            data.addPage(listPageProvider);
-        }
-
-        return data;
-    }
-
-    public void removeItem(T item) {
         try {
-            if(mData!=null) {
-                List<T> list = new ArrayList<>();
-                list.addAll(mData.getList());
-                list.remove(item);
-                mData.updateList(list);
+
+            PageProvider<T> listPageProvider = loadPageInBackground(page, mPageSize);
+
+
+            if (null == data) {
+                data = new PaginatedList<>(this, listPageProvider);
+            } else {
+                data.addPage(listPageProvider);
             }
-        } catch (ListLoaderException e) {
-            e.printStackTrace();
+
+            mData = data;
+            return IQProviders.fromResult(data);
+        } catch (Throwable throwable) {
+            return IQProviders.fromError(throwable);
         }
     }
 
-    public void addItem(T item) {
-        try {
-            if(mData!=null) {
-                List<T> list = new ArrayList<>();
-                list.addAll(mData.getList());
-                list.add(item);
-                mData.updateList(list);
-            }
-        } catch (ListLoaderException e) {
-            e.printStackTrace();
-        }
-    }
-    public void addItem(T item, int pos) {
-        try {
-            if(mData!=null) {
-                List<T> list = new ArrayList<>();
-                list.addAll(mData.getList());
-                list.add(pos, item);
-                mData.updateList(list);
-            }
-        } catch (ListLoaderException e) {
-            e.printStackTrace();
-        }
-    }
+	public abstract PageProvider<T> loadPageInBackground(int page, int pageSize);
 
-    public void updateItem(T item) {
-        try {
-            if(mData!=null) {
-                List<T> list = new ArrayList<>();
-                list.addAll(mData.getList());
-                list.set(list.indexOf(item), item);
-
-                mData.updateList(list);
-            }
-        } catch (ListLoaderException e) {
-            e.printStackTrace();
-        }
-    }
-	public abstract PageProvider<T> loadInBackground(int page);
-
-	public void loadNextPage() {
-        forceLoad();
+	void loadNextPage() {
+        onContentChanged();
 	}
 
-    @Override
-    protected void onReset() {
-        super.onReset();
-
-        onStopLoading();
+    protected void resetPages() {
         mData = null;
     }
 }
