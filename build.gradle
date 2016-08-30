@@ -1,12 +1,12 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "21.1.1"
+    compileSdkVersion sdkTarget
+    buildToolsVersion toolsVersion
 
     defaultConfig {
-        minSdkVersion 10
-        targetSdkVersion 20
+        minSdkVersion minSdk
+        targetSdkVersion sdkTarget
         versionCode 1
         versionName "1.0"
     }
@@ -20,6 +20,6 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:support-v4:20.0.0'
-    compile 'com.android.support:recyclerview-v7:22.2.1'
+    compile "com.android.support:support-v4:${supportLibVersion}"
+    compile "com.android.support:recyclerview-v7:${supportLibVersion}"
 }
