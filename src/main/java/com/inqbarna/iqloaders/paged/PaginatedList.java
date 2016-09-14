@@ -59,7 +59,7 @@ public class PaginatedList<U> {
     }
 
     public void requestNext() {
-        if (null != mLoader && !completed) {
+        if (null != mLoader && !completed && !mLoader.isReset()) {
             mLoader.loadNextPage();
         }
     }
