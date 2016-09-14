@@ -1,2 +1,4 @@
 /build
+/adapters/build
+/loaders/build
 *.iml
