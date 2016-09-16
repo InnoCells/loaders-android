@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Created by David García <david.garcia@inqbarna.com> on 24/11/14.
  */
-class LoaderPaginatedList<U> implements PaginatedList<U> {
+public class LoaderPaginatedList<U> implements PaginatedList<U> {
 
     private List<U> list;
     private boolean completed;
