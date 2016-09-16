@@ -11,7 +11,7 @@ import android.view.ViewGroup;
  * @author David García <david.garcia@inqbarna.com>
  * @version 1.0 6/9/16
  */
-public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder> {
+public abstract class BindingAdapter<T extends TypeMarker> extends RecyclerView.Adapter<BindingHolder> {
     private ItemBinder mItemBinder;
 
     public void setItemBinder(ItemBinder itemBinder) {
@@ -40,7 +40,7 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
         variableBinding.unlockVars();
     }
 
-    protected abstract Object getDataAt(int position);
+    protected abstract TypeMarker getDataAt(int position);
 
     private void checkBinder() {
         if (null == mItemBinder) {
@@ -51,11 +51,10 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
     @Override
     public int getItemViewType(int position) {
         checkBinder();
-        return mItemBinder.getLayout(position);
+        return getDataAt(position).getItemType();
     }
 
     public interface ItemBinder {
-        int getLayout(int pos);
         void setHandlers(ViewDataBinding dataBinding, int viewType);
         void bindVariables(VariableBinding variableBinding, int pos, Object dataAtPos);
     }

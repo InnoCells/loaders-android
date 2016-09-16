@@ -11,7 +11,7 @@ import com.inqbarna.iqloaders.paged.PaginatedList;
  * @version 1.0 14/9/16
  */
 
-public class PaginatedBindingAdapter<T> extends BindingAdapter {
+public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapter<T> {
 
     private PaginatedAdapterDelegate<T> mDelegate;
 
@@ -24,7 +24,7 @@ public class PaginatedBindingAdapter<T> extends BindingAdapter {
     }
 
     @Override
-    protected Object getDataAt(int position) {
+    protected T getDataAt(int position) {
         return mDelegate.getItem(position);
     }
 
