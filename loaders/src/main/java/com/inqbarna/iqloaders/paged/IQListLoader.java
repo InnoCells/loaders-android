@@ -3,13 +3,13 @@ package com.inqbarna.iqloaders.paged;
 import android.content.Context;
 import android.support.v4.os.OperationCanceledException;
 
+import com.inqbarna.common.paging.PaginatedList;
 import com.inqbarna.iqloaders.IQLoader;
 import com.inqbarna.iqloaders.IQProvider;
 import com.inqbarna.iqloaders.IQProviders;
 
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.Queue;
 
 public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
@@ -17,8 +17,8 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
     public static final int DEFAULT_FIRST_PAGE = 1;
     private final int mFirstPage;
 
-    private PaginatedList<T> mData;
-    private int mPageSize;
+    private LoaderPaginatedList<T> mData;
+    private int                    mPageSize;
 
     private static class Request {
         final int page;
@@ -56,9 +56,9 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
         }
 
         try {
-            PaginatedList<T> data = null;
+            LoaderPaginatedList<T> data = null;
             if (mData != null) {
-                data = new PaginatedList<>(this, mData);
+                data = new LoaderPaginatedList<>(this, mData);
             }
 
 
@@ -80,7 +80,7 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
                 }
 
                 if (null == data) {
-                    data = new PaginatedList<>(this, listPageProvider);
+                    data = new LoaderPaginatedList<>(this, listPageProvider);
                 } else {
                     data.addPage(listPageProvider);
                 }
@@ -91,7 +91,7 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
             }
 
             mData = data;
-            return IQProviders.fromResult(data);
+            return IQProviders.<PaginatedList<T>>fromResult(data);
         } catch (Throwable throwable) {
             return IQProviders.fromError(throwable);
         } finally {

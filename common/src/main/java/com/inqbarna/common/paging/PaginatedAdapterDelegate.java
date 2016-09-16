@@ -1,8 +1,10 @@
-package com.inqbarna.iqloaders.paged;
+package com.inqbarna.common.paging;
 
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+
+import java.util.Collection;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -11,13 +13,11 @@ import android.view.View;
 public class PaginatedAdapterDelegate<T> {
 
     public static final int DEFAULT_REQUEST_DISTANCE = 5;
-
     private final RecyclerView.Adapter mAdapter;
     private       PaginatedList<T>     mList;
     private       ProgressHintListener mProgressHintListener;
-    private       boolean              mPageRequested;
     private       int                  mMinRequestDistance;
-
+    private       boolean              mPageRequested;
     private RecyclerView.OnScrollListener mScrollListener = new RecyclerView.OnScrollListener() {
         @Override
         public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -32,30 +32,24 @@ public class PaginatedAdapterDelegate<T> {
             final View lastChild = recyclerView.getChildAt(childCount - 1);
             final int lastVisiblePosition = recyclerView.getChildAdapterPosition(lastChild);
 
-            if (null != mList && mList.hasMorePages() && (getLastItemPosition() - lastVisiblePosition) <= mMinRequestDistance) {
-                requestNextPage();
+            if (hasMorePages() && (getLastItemPosition() - lastVisiblePosition) <= mMinRequestDistance) {
+                innerRequestNext();
             }
         }
     };
 
+    protected boolean hasMorePages() {
+        return null != mList && mList.hasMorePages();
+    }
+
     public PaginatedAdapterDelegate(RecyclerView.Adapter adapter, @Nullable ProgressHintListener loadingListener) {
-        mProgressHintListener = loadingListener;
-        mAdapter = adapter;
         mMinRequestDistance = DEFAULT_REQUEST_DISTANCE;
+        mAdapter = adapter;
+        mProgressHintListener = loadingListener;
     }
 
     void requestNextPage() {
-        if (!mPageRequested && null != mList) {
-            mPageRequested = true;
-            if (null != mProgressHintListener) {
-                mProgressHintListener.setLoadingState(true);
-            }
-            mList.requestNext();
-        }
-    }
-
-    public void setLoadingIndicatorHint(@Nullable ProgressHintListener loadingListener) {
-        mProgressHintListener = loadingListener;
+        mList.requestNext();
     }
 
     public T getItem(int position) {
@@ -71,12 +65,49 @@ public class PaginatedAdapterDelegate<T> {
         mAdapter.notifyDataSetChanged();
     }
 
-    public int getLastItemPosition() {
-        return Math.max(0, getItemCount() - 1);
+    public void clear() {
+        mList.clear();
+        mPageRequested = false;
+        mAdapter.notifyDataSetChanged();
+    }
+
+    public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
+        final int initialSize = mList.size();
+        mList.appendPageItems(pageItems, lastPage);
+
+
+        onFinishAddItems(initialSize, pageItems.size());
+    }
+
+    protected void onFinishAddItems(int startPos, int size) {
+        if (null != mProgressHintListener) {
+            mProgressHintListener.setLoadingState(false);
+        }
+
+        mPageRequested = false;
+        mAdapter.notifyItemRangeInserted(startPos, size);
     }
 
     public int getItemCount() {
         return mList != null ? mList.size() : 0;
+    }
+
+    private void innerRequestNext() {
+        if (!mPageRequested && null != mList) {
+            mPageRequested = true;
+            if (null != mProgressHintListener) {
+                mProgressHintListener.setLoadingState(true);
+            }
+            requestNextPage();
+        }
+    }
+
+    public void setLoadingIndicatorHint(@Nullable ProgressHintListener loadingListener) {
+        mProgressHintListener = loadingListener;
+    }
+
+    public int getLastItemPosition() {
+        return Math.max(0, getItemCount() - 1);
     }
 
     public void onAttachedToRecyclerView(RecyclerView recyclerView) {

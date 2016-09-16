@@ -1,10 +1,18 @@
-package com.inqbarna.iqloaders.paged;
+package com.inqbarna.common.paging;
 
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
+import com.inqbarna.common.paging.PaginatedAdapterDelegate;
+import com.inqbarna.common.paging.PaginatedList;
+
+import java.util.Collection;
+
 /**
  * Created by Ricard on 14/9/15.
+ *
+ * @author Ricard
+ * @author David García <david.garcia@inqbarna.com>
  */
 public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHolder> extends RecyclerView.Adapter<VH> {
 
@@ -28,6 +36,10 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHo
 
     public void setItems(PaginatedList<T> items) {
         mPaginatedDelegate.setItems(items);
+    }
+
+    public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
+        mPaginatedDelegate.addNextPage(pageItems, lastPage);
     }
 
     private int getLastItemPosition() {

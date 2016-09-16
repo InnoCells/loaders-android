@@ -3,8 +3,10 @@ package com.inqbarna.adapters;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
-import com.inqbarna.iqloaders.paged.PaginatedAdapterDelegate;
-import com.inqbarna.iqloaders.paged.PaginatedList;
+import com.inqbarna.common.paging.PaginatedAdapterDelegate;
+import com.inqbarna.common.paging.PaginatedList;
+
+import java.util.Collection;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -13,6 +15,7 @@ import com.inqbarna.iqloaders.paged.PaginatedList;
 
 public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapter<T> {
 
+    @Nullable private final PaginatedAdapterDelegate.ProgressHintListener mListener;
     private PaginatedAdapterDelegate<T> mDelegate;
 
     public PaginatedBindingAdapter() {
@@ -20,42 +23,61 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
     }
 
     public PaginatedBindingAdapter(@Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
-        mDelegate = new PaginatedAdapterDelegate<>(this, listener);
+        mListener = listener;
     }
 
     @Override
     protected T getDataAt(int position) {
-        return mDelegate.getItem(position);
+        return getDelegate().getItem(position);
     }
 
     @Override
     public int getItemCount() {
-        return mDelegate.getItemCount();
+        return getDelegate().getItemCount();
     }
 
     public void setLoadingIndicatorHint(@Nullable PaginatedAdapterDelegate.ProgressHintListener loadingListener) {
-        mDelegate.setLoadingIndicatorHint(loadingListener);
+        getDelegate().setLoadingIndicatorHint(loadingListener);
     }
 
     public T getItem(int position) {
-        return mDelegate.getItem(position);
+        return getDelegate().getItem(position);
     }
 
     public void setItems(PaginatedList<T> items) {
-        mDelegate.setItems(items);
+        getDelegate().setItems(items);
+    }
+
+    public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
+        getDelegate().addNextPage(pageItems, lastPage);
+    }
+
+    public void clear() {
+        getDelegate().clear();
     }
 
     public int getLastItemPosition() {
-        return mDelegate.getLastItemPosition();
+        return getDelegate().getLastItemPosition();
     }
 
     @Override
     public void onAttachedToRecyclerView(RecyclerView recyclerView) {
-        mDelegate.onAttachedToRecyclerView(recyclerView);
+        getDelegate().onAttachedToRecyclerView(recyclerView);
     }
 
     @Override
     public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
-        mDelegate.onDetachedFromRecyclerView(recyclerView);
+        getDelegate().onDetachedFromRecyclerView(recyclerView);
+    }
+
+    protected final PaginatedAdapterDelegate<T> getDelegate() {
+        if (null == mDelegate) {
+            mDelegate = createDelegate(mListener);
+        }
+        return mDelegate;
+    }
+
+    protected PaginatedAdapterDelegate<T> createDelegate(@Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
+        return new PaginatedAdapterDelegate<T>(this, listener);
     }
 }

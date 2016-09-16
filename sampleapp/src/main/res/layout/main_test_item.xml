@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <data>
+        <variable name="model" type="com.inqbarna.libsamples.MainActivity.TestVM"/>
+    </data>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+              android:paddingTop="35dp"
+              android:paddingBottom="35dp"
+              android:paddingStart="10dp"
+              android:paddingLeft="10dp"
+              android:paddingEnd="10dp"
+              android:paddingRight="10dp"
+              android:textSize="18sp"
+              android:text="@{model.value, default=Hola}"
+    />
+</layout>

@@ -22,6 +22,7 @@ allprojects {
 		sdkTarget = 24
 		minSdk = 10
 		toolsVersion = "24"
+        rxJavaVersion = "1.1.10"
 	}
 }
 
