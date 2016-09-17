@@ -3,14 +3,9 @@ package com.inqbarna.adapters;
 import android.support.annotation.Nullable;
 
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
-import com.inqbarna.rxutil.paging.ErrorCallback;
+import com.inqbarna.rxutil.paging.RxPagingCallback;
 import com.inqbarna.rxutil.paging.PageFactory;
 import com.inqbarna.rxutil.paging.RxPagingAdapterDelegate;
-
-import java.util.List;
-
-import rx.Observable;
-import rx.Scheduler;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -19,20 +14,20 @@ import rx.Scheduler;
 
 public class RxPaginatedBindingAdapter<T extends TypeMarker> extends PaginatedBindingAdapter<T> {
 
-    private final ErrorCallback mErrorCallback;
+    private final RxPagingCallback mRxPagingCallback;
 
-    public RxPaginatedBindingAdapter(ErrorCallback callback, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
+    public RxPaginatedBindingAdapter(RxPagingCallback callback, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
         super(listener);
-        mErrorCallback = callback;
+        mRxPagingCallback = callback;
     }
 
-    public RxPaginatedBindingAdapter(ErrorCallback callback) {
+    public RxPaginatedBindingAdapter(RxPagingCallback callback) {
         this(callback, null);
     }
 
     @Override
     protected PaginatedAdapterDelegate<T> createDelegate(@Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
-        return new RxPagingAdapterDelegate<>(this, mErrorCallback, listener);
+        return new RxPagingAdapterDelegate<>(this, mRxPagingCallback, listener);
     }
 
 

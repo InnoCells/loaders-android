@@ -19,7 +19,7 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
     private List<U> mData;
     private boolean mCompleted;
 
-    interface Callbacks extends ErrorCallback {
+    interface Callbacks extends RxPagingCallback {
         void onItemsAdded(int startPos, int size);
     }
 
@@ -73,6 +73,7 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
     public void clear() {
         mData.clear();
         mCompleted = true;
+        mCallbacks.onCompleted();
         unsubscribe();
     }
 

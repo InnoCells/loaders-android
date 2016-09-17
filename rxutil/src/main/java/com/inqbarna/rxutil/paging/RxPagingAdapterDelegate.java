@@ -29,7 +29,12 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
     private RxPaginatedList.Callbacks mCallbacks = new RxPaginatedList.Callbacks() {
         @Override
         public void onError(Throwable throwable) {
-            mErrorCallback.onError(throwable);
+            mRxPagingCallback.onError(throwable);
+        }
+
+        @Override
+        public void onCompleted() {
+            mRxPagingCallback.onCompleted();
         }
 
         @Override
@@ -38,12 +43,12 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
         }
     };
 
-    private ErrorCallback mErrorCallback;
+    private RxPagingCallback mRxPagingCallback;
     private Subscription mActiveSubscription;
 
-    public RxPagingAdapterDelegate(RecyclerView.Adapter adapter, @NonNull ErrorCallback errorCallback, @Nullable ProgressHintListener loadingListener) {
+    public RxPagingAdapterDelegate(RecyclerView.Adapter adapter, @NonNull RxPagingCallback rxPagingCallback, @Nullable ProgressHintListener loadingListener) {
         super(adapter, loadingListener);
-        mErrorCallback = errorCallback;
+        mRxPagingCallback = rxPagingCallback;
     }
 
     @Override
