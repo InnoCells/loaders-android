@@ -26,6 +26,7 @@ dependencies {
     compile project(':common')
     compile "com.android.support:recyclerview-v7:${supportLibVersion}"
     compile group: 'io.reactivex', name: 'rxjava', version: rxJavaVersion
+    compile 'io.reactivex:rxandroid:1.2.1'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })

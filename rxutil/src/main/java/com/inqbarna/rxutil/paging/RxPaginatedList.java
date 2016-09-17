@@ -62,15 +62,16 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
     @Override
     public void requestNext() {
         if (!mCompleted) {
-            final Scheduler.Worker worker = mScheduler.createWorker();
-            worker.schedule(
-                    new Action0() {
-                        @Override
-                        public void call() {
-                            request(1);
-                        }
-                    }
-            );
+//            final Scheduler.Worker worker = mScheduler.createWorker();
+//            worker.schedule(
+//                    new Action0() {
+//                        @Override
+//                        public void call() {
+//
+//                        }
+//                    }
+//            );
+            request(1);
             return;
         }
         throw new IllegalStateException("You requested data after completed!");

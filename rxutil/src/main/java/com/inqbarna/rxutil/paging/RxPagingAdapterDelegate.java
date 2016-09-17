@@ -14,9 +14,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import rx.Observable;
+import rx.Observer;
 import rx.Scheduler;
 import rx.Subscriber;
 import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Func0;
+import rx.functions.Func3;
+import rx.observables.AsyncOnSubscribe;
 import rx.schedulers.Schedulers;
 
 /**
@@ -54,40 +59,73 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
     }
 
     @Override
-    public void setItems(PaginatedList<T> items) {
-        setDataStream(asObservable(items));
+    public void setItemsInternal(PaginatedList<T> items, boolean endLoad) {
+        setDataFactory(asPageFactory(items), items.size(), items.size(), endLoad);
     }
 
-    private static <U> Observable<List<? extends U>> asObservable(final PaginatedList<U> items) {
+    private PageFactory<T> asPageFactory(PaginatedList<T> items) {
+        final List<T> allItems = new ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            allItems.add(items.get(i));
+        }
+
+        return new PageFactory<T>() {
+            @Override
+            public Observable<? extends T> nextPageObservable(int start, int size) {
+                List<T> subList = allItems.subList(start, start + Math.min(size, allItems.size()));
+                return Observable.from(subList);
+            }
+        };
+    }
+
+    public void setDataFactory(PageFactory<T> factory, int displayPageSize, int requestPageSize) {
+        setDataFactory(factory, displayPageSize, requestPageSize, false);
+    }
+
+    private void setDataFactory(PageFactory<T> factory, int displayPageSize, int requestPageSize, boolean endLoad) {
+        setDataStream(createStreamObservable(factory, displayPageSize, requestPageSize), endLoad);
+    }
+
+    private Observable<? extends List<? extends T>> createStreamObservable(PageFactory<T> factory, int displayPageSize, int requestPageSize) {
+        return createStream(factory, displayPageSize, requestPageSize);
+    }
+
+    private Observable<List<T>> createStream(final PageFactory<T> factory, final int displayPageSize, final int requestPageSize) {
         return Observable.create(
-                new Observable.OnSubscribe<List<? extends U>>() {
-                    @Override
-                    public void call(Subscriber<? super List<? extends U>> subscriber) {
-                        final int size = items.size();
-                        List<U> data = new ArrayList<>(size);
-                        for (int i = 0; i < size; i++) {
-                            data.add(items.get(i));
+                AsyncOnSubscribe.createStateful(
+                        new Func0<RequestState<T>>() {
+                            @Override
+                            public RequestState<T> call() {
+                                return new RequestState<>(requestPageSize, factory);
+                            }
+                        },
+                        new Func3<RequestState<T>, Long, Observer<Observable<? extends T>>, RequestState<T>>() {
+                            @Override
+                            public RequestState<T> call(RequestState<T> state, Long aLong, Observer<Observable<? extends T>> observableObserver) {
+                                observableObserver.onNext(state.nextObservable());
+                                return state;
+                            }
                         }
-                        if (!subscriber.isUnsubscribed()) {
-                            subscriber.onNext(data);
-                            subscriber.onCompleted();
-                        }
-                    }
-                }
-        );
+                )
+        ).buffer(displayPageSize).observeOn(AndroidSchedulers.mainThread(), 1);
     }
 
-    public void setDataStream(Observable<? extends List<? extends T>> stream) {
+    private void setDataStream(Observable<? extends List<? extends T>> stream, boolean endLoad) {
         if (null != mActiveSubscription) {
             mActiveSubscription.unsubscribe();
         }
-        final PaginatedList<T> items = RxPaginatedList.create(stream.subscribeOn(mScheduler), mCallbacks, mScheduler);
+        final PaginatedList<T> items = RxPaginatedList.create(stream, mCallbacks, mScheduler);
         mActiveSubscription = ((RxPaginatedList<T>)items);
-        super.setItems(items);
+        beginProgress();
+        super.setItemsInternal(items, endLoad);
     }
 
     @Override
     public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
         throw new UnsupportedOperationException("This delegate does not support this operation");
+    }
+
+    public void setDataFactory(PageFactory<T> factory, int pageSize) {
+        setDataFactory(factory, pageSize, pageSize);
     }
 }

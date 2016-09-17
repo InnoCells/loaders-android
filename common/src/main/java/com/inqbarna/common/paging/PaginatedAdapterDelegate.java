@@ -57,11 +57,17 @@ public class PaginatedAdapterDelegate<T> {
     }
 
     public void setItems(PaginatedList<T> items) {
+        setItemsInternal(items, true);
+    }
+
+    protected void setItemsInternal(PaginatedList<T> items, boolean endLoad) {
         mList = items;
-        if (null != mProgressHintListener) {
-            mProgressHintListener.setLoadingState(false);
+        if (endLoad) {
+            if (null != mProgressHintListener) {
+                mProgressHintListener.setLoadingState(false);
+            }
+            mPageRequested = false;
         }
-        mPageRequested = false;
         mAdapter.notifyDataSetChanged();
     }
 
@@ -69,6 +75,13 @@ public class PaginatedAdapterDelegate<T> {
         mList.clear();
         mPageRequested = false;
         mAdapter.notifyDataSetChanged();
+    }
+
+    protected void beginProgress() {
+        if (null != mProgressHintListener) {
+            mProgressHintListener.setLoadingState(true);
+        }
+        mPageRequested = true;
     }
 
     public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {

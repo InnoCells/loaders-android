@@ -18,7 +18,7 @@ allprojects {
         jcenter()
     }
 	ext {
-		supportLibVersion = "24.2.0"
+		supportLibVersion = "24.2.1"
 		sdkTarget = 24
 		minSdk = 10
 		toolsVersion = "24"
