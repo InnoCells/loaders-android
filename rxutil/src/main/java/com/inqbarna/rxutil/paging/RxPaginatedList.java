@@ -7,9 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 import rx.Observable;
-import rx.Scheduler;
 import rx.Subscriber;
-import rx.functions.Action0;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -18,7 +16,6 @@ import rx.functions.Action0;
 
 public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements PaginatedList<U> {
     private final Callbacks mCallbacks;
-    private final Scheduler mScheduler;
     private List<U> mData;
     private boolean mCompleted;
 
@@ -26,13 +23,12 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
         void onItemsAdded(int startPos, int size);
     }
 
-    public static <T> PaginatedList<T> create(Observable<? extends List<? extends T>> stream, Callbacks callbacks, Scheduler scheduler) {
-        return new RxPaginatedList<>(stream, callbacks, scheduler);
+    public static <T> PaginatedList<T> create(Observable<? extends List<? extends T>> stream, Callbacks callbacks) {
+        return new RxPaginatedList<>(stream, callbacks);
     }
 
-    private RxPaginatedList(Observable<? extends List<? extends U>> stream, Callbacks callbacks, Scheduler scheduler) {
+    private RxPaginatedList(Observable<? extends List<? extends U>> stream, Callbacks callbacks) {
         mCallbacks = callbacks;
-        mScheduler = scheduler;
         mData = new ArrayList<>();
         mCompleted = false;
         stream.subscribe(this);
@@ -62,15 +58,6 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
     @Override
     public void requestNext() {
         if (!mCompleted) {
-//            final Scheduler.Worker worker = mScheduler.createWorker();
-//            worker.schedule(
-//                    new Action0() {
-//                        @Override
-//                        public void call() {
-//
-//                        }
-//                    }
-//            );
             request(1);
             return;
         }

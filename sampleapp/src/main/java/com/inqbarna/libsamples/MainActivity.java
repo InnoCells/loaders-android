@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void bindVariables(VariableBinding variableBinding, int pos, Object dataAtPos) {
+        public void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos) {
             variableBinding.bindValue(BR.model, dataAtPos);
         }
     };
@@ -88,12 +88,9 @@ public class MainActivity extends AppCompatActivity {
         return new PageFactory<TestVM>() {
             @Override
             public Observable<? extends TestVM> nextPageObservable(int start, int size) {
-                int endElem = Math.min(start + size, 115);
+                int endElem = Math.min(start + size, 1150);
                 size = endElem - start;
-                if (start >= 80) {
-                    throw new IllegalArgumentException();
-                }
-                return Observable.range(start, size).subscribeOn(Schedulers.io()).delaySubscription(2, TimeUnit.SECONDS)
+                return Observable.range(start, size).subscribeOn(Schedulers.io()).delaySubscription(10, TimeUnit.SECONDS)
                         .map(
                                 new Func1<Integer, TestVM>() {
                                     @Override

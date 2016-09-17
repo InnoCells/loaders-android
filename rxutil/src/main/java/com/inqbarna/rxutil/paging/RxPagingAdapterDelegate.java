@@ -10,19 +10,14 @@ import com.inqbarna.common.paging.PaginatedList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import rx.Observable;
 import rx.Observer;
-import rx.Scheduler;
-import rx.Subscriber;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
 import rx.functions.Func3;
 import rx.observables.AsyncOnSubscribe;
-import rx.schedulers.Schedulers;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -31,7 +26,6 @@ import rx.schedulers.Schedulers;
 
 public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
 
-    private final Scheduler mScheduler;
     private RxPaginatedList.Callbacks mCallbacks = new RxPaginatedList.Callbacks() {
         @Override
         public void onError(Throwable throwable) {
@@ -47,15 +41,9 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
     private ErrorCallback mErrorCallback;
     private Subscription mActiveSubscription;
 
-    public RxPagingAdapterDelegate(RecyclerView.Adapter adapter, @NonNull ErrorCallback errorCallback, @Nullable Scheduler scheduler, @Nullable ProgressHintListener loadingListener) {
+    public RxPagingAdapterDelegate(RecyclerView.Adapter adapter, @NonNull ErrorCallback errorCallback, @Nullable ProgressHintListener loadingListener) {
         super(adapter, loadingListener);
         mErrorCallback = errorCallback;
-        mScheduler = scheduler == null ? createDefaultScheduller() : scheduler;
-    }
-
-    private Scheduler createDefaultScheduller() {
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        return Schedulers.from(executorService);
     }
 
     @Override
@@ -122,7 +110,7 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
         if (null != mActiveSubscription) {
             mActiveSubscription.unsubscribe();
         }
-        final PaginatedList<T> items = RxPaginatedList.create(stream, mCallbacks, mScheduler);
+        final PaginatedList<T> items = RxPaginatedList.create(stream, mCallbacks);
         mActiveSubscription = ((RxPaginatedList<T>)items);
         beginProgress();
         super.setItemsInternal(items, endLoad);

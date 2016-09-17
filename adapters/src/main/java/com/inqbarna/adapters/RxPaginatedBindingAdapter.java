@@ -20,16 +20,10 @@ import rx.Scheduler;
 public class RxPaginatedBindingAdapter<T extends TypeMarker> extends PaginatedBindingAdapter<T> {
 
     private final ErrorCallback mErrorCallback;
-    private Scheduler mScheduler;
 
     public RxPaginatedBindingAdapter(ErrorCallback callback, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
-        this(callback, null, listener);
-    }
-
-    public RxPaginatedBindingAdapter(ErrorCallback callback, Scheduler scheduler, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
         super(listener);
         mErrorCallback = callback;
-        mScheduler = scheduler;
     }
 
     public RxPaginatedBindingAdapter(ErrorCallback callback) {
@@ -38,7 +32,7 @@ public class RxPaginatedBindingAdapter<T extends TypeMarker> extends PaginatedBi
 
     @Override
     protected PaginatedAdapterDelegate<T> createDelegate(@Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
-        return new RxPagingAdapterDelegate<>(this, mErrorCallback, mScheduler, listener);
+        return new RxPagingAdapterDelegate<>(this, mErrorCallback, listener);
     }
 
 

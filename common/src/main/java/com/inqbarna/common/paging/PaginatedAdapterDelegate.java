@@ -72,8 +72,11 @@ public class PaginatedAdapterDelegate<T> {
     }
 
     public void clear() {
-        mList.clear();
-        mPageRequested = false;
+        if (null != mList) {
+            mList.clear();
+        }
+        mList = null;
+        endProgress();
         mAdapter.notifyDataSetChanged();
     }
 
@@ -84,7 +87,17 @@ public class PaginatedAdapterDelegate<T> {
         mPageRequested = true;
     }
 
+    protected void endProgress() {
+        if (null != mProgressHintListener) {
+            mProgressHintListener.setLoadingState(false);
+        }
+        mPageRequested = false;
+    }
+
     public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
+        if (null == mList) {
+            throw new IllegalStateException("You need first to initialize the PaginatedList");
+        }
         final int initialSize = mList.size();
         mList.appendPageItems(pageItems, lastPage);
 

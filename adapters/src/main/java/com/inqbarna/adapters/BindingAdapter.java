@@ -56,6 +56,6 @@ public abstract class BindingAdapter<T extends TypeMarker> extends RecyclerView.
 
     public interface ItemBinder {
         void setHandlers(ViewDataBinding dataBinding, int viewType);
-        void bindVariables(VariableBinding variableBinding, int pos, Object dataAtPos);
+        void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos);
     }
 }
