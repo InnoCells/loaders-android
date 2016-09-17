@@ -1,9 +1,8 @@
 package com.inqbarna.rxutil.paging;
 
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import rx.Observable;
 import rx.Observer;
@@ -14,64 +13,53 @@ import rx.Observer;
 class RequestState<T> {
     public final int pageSize;
     private int mOffset;
-    private boolean mCompleted;
+    private AtomicBoolean mCompleted;
+    private AtomicReference<Throwable> mError;
     private PageFactory<T> mFactory;
-
-    private Deque<T> mDeque = new LinkedList<>();
 
     RequestState(int pageSize, PageFactory<T> mFactory) {
         this.pageSize = pageSize;
         this.mFactory = mFactory;
         mOffset = 0;
-    }
-
-    int size() {
-        return mDeque.size();
-    }
-
-    void addValues(List<? extends T> nextValues) {
-        for (T t : nextValues) {
-            mDeque.offer(t);
-        }
-    }
-
-    void consume(long amount, Observer<Observable<? extends T>> observable) {
-        List<T> values = new ArrayList<>((int) amount);
-        while (amount > 0 && !mDeque.isEmpty()) {
-            values.add(mDeque.removeFirst());
-            amount--;
-        }
-
-        mCompleted = amount > 0;
-
-        observable.onNext(Observable.from(values));
-        if (mCompleted) {
-            observable.onCompleted();
-        }
+        mCompleted = new AtomicBoolean(false);
+        mError = new AtomicReference<>(null);
     }
 
     boolean getCompleted() {
-        return mCompleted;
+        return mCompleted.get();
     }
 
-    static class PageRequest {
-        final int offset;
-        final int size;
-
-        PageRequest(int offset, int size) {
-            this.offset = offset;
-            this.size = size;
-        }
+    Throwable getError() {
+        return mError.get();
     }
 
-    public PageRequest nextRequest() {
-        PageRequest request = new PageRequest(mOffset, pageSize);
+    Observable<? extends T> nextObservable() {
+        int offset = mOffset;
         mOffset += pageSize;
-        return request;
-    }
+        Observable<? extends T> observable = mFactory.nextPageObservable(offset, pageSize);
+        final AtomicInteger counter = new AtomicInteger(pageSize);
 
-    public Observable<? extends T> nextObservable() {
-        PageRequest pageRequest = nextRequest();
-        return mFactory.nextPageObservable(pageRequest.offset, pageRequest.size);
+        return observable
+                .doOnEach(
+                        new Observer<T>() {
+                            @Override
+                            public void onCompleted() {
+                                int remaining = counter.get();
+                                if (remaining != 0) {
+                                    mCompleted.compareAndSet(false, true);
+                                }
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                mError.compareAndSet(null, e);
+                            }
+
+                            @Override
+                            public void onNext(T t) {
+                                counter.decrementAndGet();
+                            }
+                        }
+                );
     }
 }

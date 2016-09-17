@@ -102,7 +102,15 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
                         new Func3<RequestState<T>, Long, Observer<Observable<? extends T>>, RequestState<T>>() {
                             @Override
                             public RequestState<T> call(RequestState<T> state, Long aLong, Observer<Observable<? extends T>> observableObserver) {
-                                observableObserver.onNext(state.nextObservable());
+                                Throwable error = state.getError();
+                                if (null != error) {
+                                    observableObserver.onError(error);
+                                } else if (state.getCompleted()) {
+                                    observableObserver.onCompleted();
+                                } else {
+                                    Observable<? extends T> ob = state.nextObservable();
+                                    observableObserver.onNext(ob);
+                                }
                                 return state;
                             }
                         }

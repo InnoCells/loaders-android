@@ -96,6 +96,7 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
 
     @Override
     public void onError(Throwable e) {
+        mCompleted = true;
         mCallbacks.onError(e);
     }
 

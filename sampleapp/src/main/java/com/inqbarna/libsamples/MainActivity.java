@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.widget.Toast;
 
 import com.inqbarna.adapters.BindingAdapter;
 import com.inqbarna.adapters.RxPaginatedBindingAdapter;
@@ -30,7 +31,12 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.progress)
     View progress;
 
-    private ErrorCallback mErrorCallback;
+    private ErrorCallback mErrorCallback = new ErrorCallback() {
+        @Override
+        public void onError(Throwable throwable) {
+            Toast.makeText(MainActivity.this, "Error detectado", Toast.LENGTH_LONG).show();
+        }
+    };
     private PaginatedAdapterDelegate.ProgressHintListener mProgressListener = new PaginatedAdapterDelegate.ProgressHintListener() {
         @Override
         public void setLoadingState(boolean loading) {
@@ -71,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
 
-        mAdapter = new RxPaginatedBindingAdapter<TestVM>(mErrorCallback, mProgressListener);
+        mAdapter = new RxPaginatedBindingAdapter<>(mErrorCallback, mProgressListener);
         mAdapter.setItemBinder(mItemBinder);
         list.setAdapter(mAdapter);
 
@@ -82,6 +88,11 @@ public class MainActivity extends AppCompatActivity {
         return new PageFactory<TestVM>() {
             @Override
             public Observable<? extends TestVM> nextPageObservable(int start, int size) {
+                int endElem = Math.min(start + size, 115);
+                size = endElem - start;
+                if (start >= 80) {
+                    throw new IllegalArgumentException();
+                }
                 return Observable.range(start, size).subscribeOn(Schedulers.io()).delaySubscription(2, TimeUnit.SECONDS)
                         .map(
                                 new Func1<Integer, TestVM>() {
