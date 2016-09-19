@@ -16,6 +16,7 @@ import rx.Subscriber;
 
 public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements PaginatedList<U> {
     private final Callbacks mCallbacks;
+    private final RxPagingConfig mConfig;
     private List<U> mData;
     private boolean mCompleted;
 
@@ -23,12 +24,13 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
         void onItemsAdded(int startPos, int size);
     }
 
-    public static <T> PaginatedList<T> create(Observable<? extends List<? extends T>> stream, Callbacks callbacks) {
-        return new RxPaginatedList<>(stream, callbacks);
+    public static <T> PaginatedList<T> create(Observable<? extends List<? extends T>> stream, Callbacks callbacks, RxPagingConfig config) {
+        return new RxPaginatedList<>(stream, callbacks, config);
     }
 
-    private RxPaginatedList(Observable<? extends List<? extends U>> stream, Callbacks callbacks) {
+    private RxPaginatedList(Observable<? extends List<? extends U>> stream, Callbacks callbacks, RxPagingConfig config) {
         mCallbacks = callbacks;
+        mConfig = config;
         mData = new ArrayList<>();
         mCompleted = false;
         stream.subscribe(this);
@@ -80,6 +82,7 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
     @Override
     public void onCompleted() {
         mCompleted = true;
+        mCallbacks.onCompleted();
     }
 
     @Override

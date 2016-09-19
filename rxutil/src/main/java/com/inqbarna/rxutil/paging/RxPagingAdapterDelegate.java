@@ -35,19 +35,27 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
         @Override
         public void onCompleted() {
             mRxPagingCallback.onCompleted();
+            endProgress();
         }
 
         @Override
         public void onItemsAdded(int startPos, int size) {
-            onFinishAddItems(startPos, size);
+            RxPagingConfig pgConfig = (RxPagingConfig) getPaginateConfig();
+            if (pgConfig.notifyAsInsertions) {
+                onFinishAddItems(startPos, size);
+            } else {
+                endProgress();
+            }
         }
     };
 
     private RxPagingCallback mRxPagingCallback;
     private Subscription mActiveSubscription;
 
-    public RxPagingAdapterDelegate(RecyclerView.Adapter adapter, @NonNull RxPagingCallback rxPagingCallback, @Nullable ProgressHintListener loadingListener) {
-        super(adapter, loadingListener);
+    public RxPagingAdapterDelegate(
+            RecyclerView.Adapter adapter, @NonNull RxPagingCallback rxPagingCallback, RxPagingConfig paginateConfig,
+            @Nullable ProgressHintListener loadingListener) {
+        super(adapter, loadingListener, paginateConfig);
         mRxPagingCallback = rxPagingCallback;
     }
 
@@ -115,7 +123,7 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
         if (null != mActiveSubscription) {
             mActiveSubscription.unsubscribe();
         }
-        final PaginatedList<T> items = RxPaginatedList.create(stream, mCallbacks);
+        final PaginatedList<T> items = RxPaginatedList.create(stream, mCallbacks, (RxPagingConfig) getPaginateConfig());
         mActiveSubscription = ((RxPaginatedList<T>)items);
         beginProgress();
         super.setItemsInternal(items, endLoad);

@@ -18,6 +18,9 @@ public class PaginatedAdapterDelegate<T> {
     private       ProgressHintListener mProgressHintListener;
     private       int                  mMinRequestDistance;
     private       boolean              mPageRequested;
+    private final PaginateConfig       mPaginateConfig;
+
+
     private RecyclerView.OnScrollListener mScrollListener = new RecyclerView.OnScrollListener() {
         @Override
         public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -42,14 +45,19 @@ public class PaginatedAdapterDelegate<T> {
         return null != mList && mList.hasMorePages();
     }
 
-    public PaginatedAdapterDelegate(RecyclerView.Adapter adapter, @Nullable ProgressHintListener loadingListener) {
+    public PaginatedAdapterDelegate(RecyclerView.Adapter adapter, @Nullable ProgressHintListener loadingListener, PaginateConfig paginateConfig) {
         mMinRequestDistance = DEFAULT_REQUEST_DISTANCE;
         mAdapter = adapter;
+        mPaginateConfig = paginateConfig;
         mProgressHintListener = loadingListener;
     }
 
     void requestNextPage() {
         mList.requestNext();
+    }
+
+    protected PaginateConfig getPaginateConfig() {
+        return mPaginateConfig;
     }
 
     public T getItem(int position) {
@@ -71,13 +79,16 @@ public class PaginatedAdapterDelegate<T> {
         mAdapter.notifyDataSetChanged();
     }
 
+    protected boolean getPageRequested() {
+        return mPageRequested;
+    }
+
     public void clear() {
         if (null != mList) {
             mList.clear();
         }
         mList = null;
         endProgress();
-        mAdapter.notifyDataSetChanged();
     }
 
     protected void beginProgress() {
@@ -92,6 +103,7 @@ public class PaginatedAdapterDelegate<T> {
             mProgressHintListener.setLoadingState(false);
         }
         mPageRequested = false;
+        mAdapter.notifyDataSetChanged();
     }
 
     public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
@@ -104,6 +116,7 @@ public class PaginatedAdapterDelegate<T> {
 
         onFinishAddItems(initialSize, pageItems.size());
     }
+
 
     protected void onFinishAddItems(int startPos, int size) {
         if (null != mProgressHintListener) {
@@ -151,4 +164,5 @@ public class PaginatedAdapterDelegate<T> {
     public interface ProgressHintListener {
         void setLoadingState(boolean loading);
     }
+
 }

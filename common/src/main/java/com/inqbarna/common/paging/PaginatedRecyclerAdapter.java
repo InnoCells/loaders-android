@@ -3,9 +3,6 @@ package com.inqbarna.common.paging;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
-import com.inqbarna.common.paging.PaginatedAdapterDelegate;
-import com.inqbarna.common.paging.PaginatedList;
-
 import java.util.Collection;
 
 /**
@@ -19,11 +16,16 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHo
     private final PaginatedAdapterDelegate<T> mPaginatedDelegate;
 
     public PaginatedRecyclerAdapter() {
-        this(null);
+        this(new PaginateConfig.Builder().build(), null);
+    }
+
+    public PaginatedRecyclerAdapter(
+            PaginateConfig paginateConfig, @Nullable PaginatedAdapterDelegate.ProgressHintListener loadingListener) {
+        mPaginatedDelegate = new PaginatedAdapterDelegate<>(this, loadingListener, paginateConfig);
     }
 
     public PaginatedRecyclerAdapter(@Nullable PaginatedAdapterDelegate.ProgressHintListener loadingListener) {
-        mPaginatedDelegate = new PaginatedAdapterDelegate<>(this, loadingListener);
+        this(new PaginateConfig.Builder().build(), loadingListener);
     }
 
     public void setLoadingIndicatorHint(@Nullable PaginatedAdapterDelegate.ProgressHintListener loadingListener) {

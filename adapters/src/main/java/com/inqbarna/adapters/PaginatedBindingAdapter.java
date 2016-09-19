@@ -3,6 +3,7 @@ package com.inqbarna.adapters;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
+import com.inqbarna.common.paging.PaginateConfig;
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
 import com.inqbarna.common.paging.PaginatedList;
 
@@ -16,13 +17,16 @@ import java.util.Collection;
 public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapter<T> {
 
     @Nullable private final PaginatedAdapterDelegate.ProgressHintListener mListener;
-    private PaginatedAdapterDelegate<T> mDelegate;
+    private                 PaginatedAdapterDelegate<T>                   mDelegate;
+    private                 PaginateConfig                                mPaginateConfig;
 
     public PaginatedBindingAdapter() {
-        this(null);
+        this(new PaginateConfig.Builder().build(), null);
     }
 
-    public PaginatedBindingAdapter(@Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
+    public PaginatedBindingAdapter(
+            PaginateConfig paginateConfig, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
+        mPaginateConfig = paginateConfig;
         mListener = listener;
     }
 
@@ -72,12 +76,13 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
 
     protected final PaginatedAdapterDelegate<T> getDelegate() {
         if (null == mDelegate) {
-            mDelegate = createDelegate(mListener);
+            mDelegate = createDelegate(mPaginateConfig, mListener);
         }
         return mDelegate;
     }
 
-    protected PaginatedAdapterDelegate<T> createDelegate(@Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
-        return new PaginatedAdapterDelegate<T>(this, listener);
+    protected PaginatedAdapterDelegate<T> createDelegate(
+            PaginateConfig paginateConfig, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
+        return new PaginatedAdapterDelegate<T>(this, listener, mPaginateConfig);
     }
 }
