@@ -30,6 +30,7 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
         @Override
         public void onError(Throwable throwable) {
             mRxPagingCallback.onError(throwable);
+            endProgress();
         }
 
         @Override
