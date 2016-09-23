@@ -9,7 +9,9 @@ import com.inqbarna.iqloaders.IQProvider;
 import com.inqbarna.iqloaders.IQProviders;
 
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
@@ -21,12 +23,30 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
     private int                    mPageSize;
 
     private static class Request {
+        public static final int NO_SPECIAL = -1;
+        public static final int RELOAD = -2;
         final int page;
         final int size;
+
+        final int    requestCode;
+        final Object payload;
 
         public Request(int page, int size) {
             this.page = page;
             this.size = size;
+            requestCode = NO_SPECIAL;
+            payload = false;
+        }
+
+        public Request(int requestCode, Object payload) {
+            this.requestCode = requestCode;
+            this.payload = payload;
+            page = 0;
+            size = 0;
+        }
+
+        public boolean isSpecialRequest() {
+            return requestCode > 0;
         }
     }
 
@@ -43,6 +63,35 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
         this.mFirstPage = firstPage;
         mPageSize = pageSize;
         mRequests.offer(new Request(mFirstPage, mPageSize));
+    }
+
+
+
+    protected void onSpecialTreatmentRequested(PaginatedList<T> inOutData, int requestCode, Object payload) {
+        /* no-op: override if needed */
+    }
+
+    /**
+     * Request to be called aside, this will be usefull for list update single item inside it for instance
+     * @param requestCode
+     * @param payload
+     */
+    protected void placeSpecialRequest(int requestCode, Object payload) {
+        if (requestCode <= 0) {
+            throw new IllegalArgumentException("request code needs to be > 0");
+        }
+        synchronized (mRequests) {
+            addRequest(new Request(requestCode, payload));
+        }
+    }
+
+    protected abstract void onServeSpecialRequest(int requestCode, List<T> inOutData, Object requestPayload);
+
+    protected void requestReload() {
+        synchronized (mRequests) {
+            mRequests.clear();
+            addRequest(new Request(Request.RELOAD, null));
+        }
     }
 
     @Override
@@ -64,13 +113,12 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
             Request nextRequest;
             synchronized (mRequests) {
-                // first request shouldn't be null!
+                // Shouldn't be null, if it is we're using onContentChange without placing a request
                 nextRequest = mRequests.remove();
             }
 
-            while (null != nextRequest) {
-                PageProvider<T> listPageProvider = loadPageInBackground(nextRequest.page, nextRequest.size);
 
+            while (null != nextRequest) {
 
                 if (isLoadInBackgroundCanceled()) {
                     synchronized (mRequests) {
@@ -79,10 +127,24 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
                     return IQProviders.fromError(new OperationCanceledException("Load was cancelled, result will be ignored"));
                 }
 
-                if (null == data) {
-                    data = new LoaderPaginatedList<>(this, listPageProvider);
+                if (nextRequest.isSpecialRequest()) {
+
+                    if (nextRequest.requestCode == Request.RELOAD) {
+                        PageProvider<T> listPageProvider = loadPageInBackground(mFirstPage, mPageSize);
+                        data = new LoaderPaginatedList<T>(this, listPageProvider);
+                    } else {
+                        if (null != data) {
+                            onServeSpecialRequest(nextRequest.requestCode, data.editableList(), nextRequest.payload);
+                        }
+                        /* else: just allow special requests to alter previous data set. Request will be silently ignored */
+                    }
                 } else {
-                    data.addPage(listPageProvider);
+                    PageProvider<T> listPageProvider = loadPageInBackground(nextRequest.page, nextRequest.size);
+                    if (null == data) {
+                        data = new LoaderPaginatedList<>(this, listPageProvider);
+                    } else {
+                        data.addPage(listPageProvider);
+                    }
                 }
 
                 synchronized (mRequests) {
@@ -101,27 +163,45 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
         }
     }
 
-	public abstract PageProvider<T> loadPageInBackground(int page, int pageSize);
+    @Override
+    public final void onContentChanged() {
+        throw new UnsupportedOperationException("You are not allowed to call this method directly. Sorry man!");
+    }
+
+    public abstract PageProvider<T> loadPageInBackground(int page, int pageSize);
 
 	void loadNextPage() {
         synchronized (mRequests) {
-            Request lastRequest = mRequests.peek();
-            Request nextRequest;
-            if (null == lastRequest) {
+
+            final Iterator<Request> requestIterator = mRequests.descendingIterator();
+            Request nextRequest = null;
+            while (requestIterator.hasNext()) {
+                final Request r = requestIterator.next();
+                if (!r.isSpecialRequest()) {
+                    nextRequest = new Request(r.page + 1, mPageSize);
+                    break;
+                }
+            }
+
+            if (null == nextRequest) {
                 if (null == mData) {
                     nextRequest = new Request(mFirstPage, mPageSize);
                 } else {
                     nextRequest = new Request(mData.getLastPage() + 1, mPageSize);
                 }
-            } else {
-                nextRequest = new Request(lastRequest.page + 1, mPageSize);
             }
 
+            addRequest(nextRequest);
+        }
+	}
+
+    private void addRequest(Request nextRequest) {
+        synchronized (mRequests) {
             mRequests.offer(nextRequest);
 
             if (!mLoading) {
-                onContentChanged();
+                super.onContentChanged();
             }
         }
-	}
+    }
 }

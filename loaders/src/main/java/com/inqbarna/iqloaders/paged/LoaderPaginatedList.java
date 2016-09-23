@@ -2,6 +2,7 @@ package com.inqbarna.iqloaders.paged;
 
 import com.inqbarna.common.paging.PaginatedList;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -88,5 +89,34 @@ public class LoaderPaginatedList<U> implements PaginatedList<U> {
         list.addAll(newElements);
         lastPage = provider.getCurrentPage();
         completed = provider.isCompleted();
+    }
+
+    List<U> editableList() {
+        return new AbstractList<U>() {
+            @Override
+            public U get(int index) {
+                return list.get(index);
+            }
+
+            @Override
+            public int size() {
+                return list != null ? list.size() : 0;
+            }
+
+            @Override
+            public U remove(int index) {
+                return list.remove(index);
+            }
+
+            @Override
+            public void add(int index, U element) {
+                list.add(index, element);
+            }
+
+            @Override
+            public U set(int index, U element) {
+                return list.set(index, element);
+            }
+        };
     }
 }
