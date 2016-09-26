@@ -1,11 +1,13 @@
 package com.inqbarna.iqloaders.paged;
 
 import android.content.Context;
+import android.support.v4.os.OperationCanceledException;
 
 import com.inqbarna.iqloaders.IQLoader;
 import com.inqbarna.iqloaders.IQProvider;
 import com.inqbarna.iqloaders.IQProviders;
 
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -28,7 +30,7 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
         }
     }
 
-    private final Queue<Request> mRequests = new LinkedList<>();
+    private final Deque<Request> mRequests = new LinkedList<>();
     private boolean mLoading;
 
 
@@ -68,6 +70,15 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
             while (null != nextRequest) {
                 PageProvider<T> listPageProvider = loadPageInBackground(nextRequest.page, nextRequest.size);
+
+
+                if (isLoadInBackgroundCanceled()) {
+                    synchronized (mRequests) {
+                        mRequests.offerFirst(nextRequest);
+                    }
+                    return IQProviders.fromError(new OperationCanceledException("Load was cancelled, result will be ignored"));
+                }
+
                 if (null == data) {
                     data = new PaginatedList<>(this, listPageProvider);
                 } else {
