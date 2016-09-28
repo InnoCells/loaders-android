@@ -34,6 +34,20 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter<T>
         }
     }
 
+    public void removeItem(T item) {
+        if (null != item) {
+            final int i = mData.indexOf(item);
+            if (i >= 0) {
+                mData.remove(i);
+                notifyItemRemoved(i);
+            }
+        }
+    }
+
+    protected List<T> getItemsInner() {
+        return mData;
+    }
+
     @Override
     protected T getDataAt(int position) {
         return mData.get(position);
