@@ -4,6 +4,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Created by Ricard on 14/9/15.
@@ -63,4 +64,7 @@ public abstract class PaginatedRecyclerAdapter<T, VH extends RecyclerView.ViewHo
         mPaginatedDelegate.onDetachedFromRecyclerView(recyclerView);
     }
 
+    public List<T> editableList() {
+        return mPaginatedDelegate.editableList();
+    }
 }

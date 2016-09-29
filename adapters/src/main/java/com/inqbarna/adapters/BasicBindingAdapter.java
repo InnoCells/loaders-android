@@ -2,6 +2,8 @@ package com.inqbarna.adapters;
 
 import android.databinding.ViewDataBinding;
 
+import com.inqbarna.common.AdapterSyncList;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +14,10 @@ import java.util.List;
 
 public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter<T> {
     private List<T> mData;
+
+    protected BasicBindingAdapter() {
+        this(null);
+    }
 
     public BasicBindingAdapter(ItemBinder binder) {
         setItemBinder(binder);
@@ -46,6 +52,10 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter<T>
 
     protected List<T> getItemsInner() {
         return mData;
+    }
+
+    public List<T> editableList() {
+        return new AdapterSyncList<>(mData, this);
     }
 
     @Override

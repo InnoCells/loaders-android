@@ -61,7 +61,7 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
     }
 
     @Override
-    public void setItemsInternal(PaginatedList<T> items, boolean endLoad) {
+    protected void setItemsInternal(PaginatedList<T> items, boolean endLoad) {
         setDataFactory(asPageFactory(items), items.size(), items.size(), endLoad);
     }
 

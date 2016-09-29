@@ -8,6 +8,7 @@ import com.inqbarna.common.paging.PaginatedAdapterDelegate;
 import com.inqbarna.common.paging.PaginatedList;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -72,6 +73,10 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
     @Override
     public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
         getDelegate().onDetachedFromRecyclerView(recyclerView);
+    }
+
+    public List<T> editableList() {
+        return getDelegate().editableList();
     }
 
     protected final PaginatedAdapterDelegate<T> getDelegate() {

@@ -1,5 +1,8 @@
 package com.inqbarna.iqloaders.paged;
 
+import android.support.annotation.Nullable;
+import android.support.v7.widget.RecyclerView;
+
 import com.inqbarna.common.paging.PaginatedList;
 
 import java.util.AbstractList;
@@ -118,5 +121,10 @@ public class LoaderPaginatedList<U> implements PaginatedList<U> {
                 return list.set(index, element);
             }
         };
+    }
+
+    @Override
+    public List<U> editableList(@Nullable RecyclerView.Adapter callbackAdapter) {
+        return editableList();
     }
 }

@@ -4,7 +4,9 @@ import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -163,6 +165,15 @@ public class PaginatedAdapterDelegate<T> {
      */
     public interface ProgressHintListener {
         void setLoadingState(boolean loading);
+    }
+
+    public List<T> editableList() {
+        if (null == mList) {
+            // TODO: 29/9/16 What's actually the best return? Or is it better to crash... Returning ArrayList will be at least harmless, but could hide rare issues
+            return new ArrayList<>();
+        } else {
+            return mList.editableList(mAdapter);
+        }
     }
 
 }

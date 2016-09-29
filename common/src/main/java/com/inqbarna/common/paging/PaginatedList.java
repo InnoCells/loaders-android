@@ -1,6 +1,10 @@
 package com.inqbarna.common.paging;
 
+import android.support.annotation.Nullable;
+import android.support.v7.widget.RecyclerView;
+
 import java.util.Collection;
+import java.util.List;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -13,4 +17,5 @@ public interface PaginatedList<U> {
     void requestNext();
     void appendPageItems(Collection<? extends U> items, boolean last);
     void clear();
+    List<U> editableList(@Nullable RecyclerView.Adapter callbackAdapter);
 }

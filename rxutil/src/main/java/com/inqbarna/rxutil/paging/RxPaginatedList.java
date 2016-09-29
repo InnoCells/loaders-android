@@ -1,10 +1,17 @@
 package com.inqbarna.rxutil.paging;
 
+import android.support.annotation.Nullable;
+import android.support.v7.widget.RecyclerView;
+
+import com.inqbarna.common.AdapterSyncList;
 import com.inqbarna.common.paging.PaginatedList;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 
 import rx.Observable;
 import rx.Subscriber;
@@ -97,4 +104,10 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
         mData.addAll(us);
         mCallbacks.onItemsAdded(startSize, us.size());
     }
+
+    @Override
+    public List<U> editableList(@Nullable RecyclerView.Adapter callbackAdapter) {
+        return new AdapterSyncList<>(mData, callbackAdapter);
+    }
+
 }
