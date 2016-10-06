@@ -114,13 +114,6 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
             while (null != nextRequest) {
 
-                if (isLoadInBackgroundCanceled()) {
-                    synchronized (mRequests) {
-                        mRequests.offerFirst(nextRequest);
-                    }
-                    return IQProviders.fromError(new OperationCanceledException("Load was cancelled, result will be ignored"));
-                }
-
                 if (nextRequest.isSpecialRequest()) {
 
                     if (nextRequest.requestCode == Request.RELOAD) {
@@ -144,8 +137,15 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
                     }
                 }
 
-                synchronized (mRequests) {
-                    nextRequest = mRequests.poll();
+                if (isLoadInBackgroundCanceled()) {
+                    synchronized (mRequests) {
+                        mRequests.offerFirst(nextRequest);
+                    }
+                    return IQProviders.fromError(new OperationCanceledException("Load was cancelled, result will be ignored"));
+                } else {
+                    synchronized (mRequests) {
+                        nextRequest = mRequests.poll();
+                    }
                 }
             }
 
