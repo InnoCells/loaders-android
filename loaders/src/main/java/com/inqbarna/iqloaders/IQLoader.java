@@ -52,6 +52,11 @@ public abstract class IQLoader<T> extends AsyncTaskLoader<IQProvider<T>> {
         }
     }
 
+    // Very Hacky... don't like, but for now in crumbit need to update list contents, but not whole list...
+    protected IQProvider<T> abortResult() {
+        return mData;
+    }
+
     /**
      * This method implement the Loader's state-dependent behavior.
      */

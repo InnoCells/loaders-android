@@ -1,6 +1,7 @@
 package com.inqbarna.iqloaders.paged;
 
 import android.content.Context;
+import android.support.annotation.Nullable;
 import android.support.v4.os.OperationCanceledException;
 
 import com.inqbarna.common.paging.PaginatedList;
@@ -66,11 +67,6 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
     }
 
 
-
-    protected void onSpecialTreatmentRequested(PaginatedList<T> inOutData, int requestCode, Object payload) {
-        /* no-op: override if needed */
-    }
-
     /**
      * Request to be called aside, this will be usefull for list update single item inside it for instance
      * @param requestCode
@@ -85,7 +81,7 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
         }
     }
 
-    protected abstract void onServeSpecialRequest(int requestCode, List<T> inOutData, Object requestPayload);
+    protected abstract boolean onServeSpecialRequest(int requestCode, List<T> inOutData, Object requestPayload);
 
     protected void requestReload() {
         synchronized (mRequests) {
@@ -104,12 +100,10 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
             mLoading = true;
         }
 
+        int numRegularRequests = 0;
+
         try {
             LoaderPaginatedList<T> data = null;
-            if (mData != null) {
-                data = new LoaderPaginatedList<>(this, mData);
-            }
-
 
             Request nextRequest;
             synchronized (mRequests) {
@@ -131,17 +125,20 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
 
                     if (nextRequest.requestCode == Request.RELOAD) {
                         PageProvider<T> listPageProvider = loadPageInBackground(mFirstPage, mPageSize);
-                        data = new LoaderPaginatedList<T>(this, listPageProvider);
+                        data = new LoaderPaginatedList<>(this, listPageProvider);
                     } else {
-                        if (null != data) {
-                            onServeSpecialRequest(nextRequest.requestCode, data.editableList(), nextRequest.payload);
+                        if (null != mData) {
+                            if (onServeSpecialRequest(nextRequest.requestCode, mData.editableList(), nextRequest.payload)) {
+                                data = createReturnPage(null);
+                            }
                         }
                         /* else: just allow special requests to alter previous data set. Request will be silently ignored */
                     }
                 } else {
+                    numRegularRequests++;
                     PageProvider<T> listPageProvider = loadPageInBackground(nextRequest.page, nextRequest.size);
                     if (null == data) {
-                        data = new LoaderPaginatedList<>(this, listPageProvider);
+                        data = createReturnPage(listPageProvider);
                     } else {
                         data.addPage(listPageProvider);
                     }
@@ -152,8 +149,14 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
                 }
             }
 
-            mData = data;
-            return IQProviders.<PaginatedList<T>>fromResult(data);
+            if (null != data) {
+                mData = data;
+                return IQProviders.<PaginatedList<T>>fromResult(data);
+            } else if (numRegularRequests == 0) {
+                return abortResult();
+            } else {
+                return IQProviders.fromResult(null);
+            }
         } catch (Throwable throwable) {
             return IQProviders.fromError(throwable);
         } finally {
@@ -161,6 +164,17 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
                 mLoading = false;
             }
         }
+    }
+
+    @Nullable
+    protected LoaderPaginatedList<T> createReturnPage(@Nullable PageProvider<T> provider) throws Throwable {
+        LoaderPaginatedList<T> data = null;
+        if (mData != null) {
+            data = new LoaderPaginatedList<>(this, mData);
+        } else if (null != provider) {
+            data = new LoaderPaginatedList<>(this, provider);
+        }
+        return data;
     }
 
     @Override
