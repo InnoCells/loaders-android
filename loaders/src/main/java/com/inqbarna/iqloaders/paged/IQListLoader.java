@@ -169,10 +169,15 @@ public abstract class IQListLoader<T> extends IQLoader<PaginatedList<T>> {
     @Nullable
     protected LoaderPaginatedList<T> createReturnPage(@Nullable PageProvider<T> provider) throws Throwable {
         LoaderPaginatedList<T> data = null;
-        if (mData != null) {
+        if (null != mData) {
             data = new LoaderPaginatedList<>(this, mData);
-        } else if (null != provider) {
-            data = new LoaderPaginatedList<>(this, provider);
+        }
+        if (provider != null) {
+            if (null == data) {
+                data = new LoaderPaginatedList<>(this, provider);
+            } else {
+                data.addPage(provider);
+            }
         }
         return data;
     }
