@@ -1,13 +1,10 @@
 package com.inqbarna.common;
 
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
 import java.util.AbstractList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -56,17 +53,5 @@ public class AdapterSyncList<T> extends AbstractList<T> {
             mAdapter.notifyItemRemoved(index);
         }
         return remove;
-    }
-
-    @NonNull
-    @Override
-    public Iterator<T> iterator() {
-        return mWrappedList.iterator();
-    }
-
-    @NonNull
-    @Override
-    public ListIterator<T> listIterator(int index) {
-        return mWrappedList.listIterator(index);
     }
 }
