@@ -11,7 +11,7 @@ import android.view.ViewGroup;
  * @author David García <david.garcia@inqbarna.com>
  * @version 1.0 6/9/16
  */
-public abstract class BindingAdapter<T extends TypeMarker> extends RecyclerView.Adapter<BindingHolder> {
+public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder> {
     private ItemBinder mItemBinder;
 
     public void setItemBinder(ItemBinder itemBinder) {
