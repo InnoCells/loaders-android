@@ -12,7 +12,7 @@ import java.util.List;
  * @version 1.0 15/9/16
  */
 
-public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter<T> {
+public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     private List<T> mData;
 
     protected BasicBindingAdapter() {

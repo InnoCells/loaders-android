@@ -15,7 +15,7 @@ import java.util.List;
  * @version 1.0 14/9/16
  */
 
-public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapter<T> {
+public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
     @Nullable private final PaginatedAdapterDelegate.ProgressHintListener mListener;
     private                 PaginatedAdapterDelegate<T>                   mDelegate;
