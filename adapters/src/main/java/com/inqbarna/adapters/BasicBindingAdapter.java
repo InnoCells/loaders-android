@@ -1,7 +1,5 @@
 package com.inqbarna.adapters;
 
-import android.databinding.ViewDataBinding;
-
 import com.inqbarna.common.AdapterSyncList;
 
 import java.util.ArrayList;
@@ -72,20 +70,11 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
      * @author David García <david.garcia@inqbarna.com>
      * @version 1.0 16/9/16
      */
-    public static class BasicItemBinder<T> implements ItemBinder {
-        private final T mHandler;
-        private final int mHandlerVar;
+    public static class BasicItemBinder implements ItemBinder {
         private final int mModelVar;
 
-        public BasicItemBinder(T handler, int handlerVar, int modelVar) {
-            mHandler = handler;
-            mHandlerVar = handlerVar;
+        public BasicItemBinder(int modelVar) {
             mModelVar = modelVar;
-        }
-
-        @Override
-        public void setHandlers(ViewDataBinding dataBinding, int viewType) {
-            dataBinding.setVariable(mHandlerVar, mHandler);
         }
 
         @Override
@@ -93,4 +82,24 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
             variableBinding.bindValue(mModelVar, dataAtPos);
         }
     }
+
+    @Deprecated
+    public static class OldBasicItemBinder<T> implements ItemBinder {
+        private final T mHandler;
+        private final int mHandlerVar;
+        private final int mModelVar;
+
+        public OldBasicItemBinder(T handler, int handlerVar, int modelVar) {
+            mHandler = handler;
+            mHandlerVar = handlerVar;
+            mModelVar = modelVar;
+        }
+
+        @Override
+        public void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos) {
+            variableBinding.bindValue(mModelVar, dataAtPos);
+            variableBinding.bindValue(mHandlerVar, mHandler);
+        }
+    }
+
 }

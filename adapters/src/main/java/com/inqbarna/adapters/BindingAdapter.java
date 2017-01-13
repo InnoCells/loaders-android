@@ -27,9 +27,7 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
 
         final ViewDataBinding dataBinding;
         dataBinding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), viewType, parent, false);
-        final BindingHolder bindingHolder = new BindingHolder(dataBinding);
-        mItemBinder.setHandlers(dataBinding, viewType);
-        return bindingHolder;
+        return new BindingHolder(dataBinding);
     }
 
     @Override
@@ -55,7 +53,6 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
     }
 
     public interface ItemBinder {
-        void setHandlers(ViewDataBinding dataBinding, int viewType);
         void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos);
     }
 }
