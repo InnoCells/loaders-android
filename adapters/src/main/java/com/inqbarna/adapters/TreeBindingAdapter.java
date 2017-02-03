@@ -113,23 +113,27 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
             mOpened = false;
         }
 
-        public boolean open(int yourIdxInFlat) {
+        public boolean open(int yourIdxInFlat, boolean notify) {
             if (!mOpened && hasChildren) {
                 mAdapter.mFlattened.addAll(yourIdxInFlat + 1, mChildNodes);
-                mAdapter.notifyItemRangeInserted(yourIdxInFlat + 1, numChilren);
+                if (notify) {
+                    mAdapter.notifyItemRangeInserted(yourIdxInFlat + 1, numChilren);
+                }
                 mOpened = true;
                 return true;
             }
             return false;
         }
 
-        public boolean close(int yourIdxInFlat) {
+        public boolean close(int yourIdxInFlat, boolean notify) {
             if (mOpened && hasChildren) {
 
                 final int numContributingChild = countContributing();
 
                 mAdapter.mFlattened.subList(yourIdxInFlat + 1, yourIdxInFlat + 1 + numContributingChild).clear();
-                mAdapter.notifyItemRangeRemoved(yourIdxInFlat + 1, numContributingChild);
+                if (notify) {
+                    mAdapter.notifyItemRangeRemoved(yourIdxInFlat + 1, numContributingChild);
+                }
                 mOpened = false;
                 return true;
             }
@@ -158,35 +162,35 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         return false;
     }
 
-    public boolean openAt(int visibleIndex) {
+    public boolean openAt(int visibleIndex, boolean notify) {
         if (visibleIndex >= 0 && visibleIndex < mFlattened.size()) {
             final TreeNode<T> tTreeNode = mFlattened.get(visibleIndex);
-            return tTreeNode.open(visibleIndex);
+            return tTreeNode.open(visibleIndex, notify);
         }
         return false;
     }
 
-    public boolean open(@NonNull T visibleItem) {
+    public boolean open(@NonNull T visibleItem, boolean notify) {
         for (int i = 0, sz = mFlattened.size(); i < sz; i++) {
             if (itemEqual(mFlattened.get(i).data, visibleItem)) {
-                return openAt(i);
+                return openAt(i, notify);
             }
         }
         return false;
     }
 
-    public boolean closeAt(int visibleIndex) {
+    public boolean closeAt(int visibleIndex, boolean notify) {
         if (visibleIndex >= 0 && visibleIndex < mFlattened.size()) {
             final TreeNode<T> tTreeNode = mFlattened.get(visibleIndex);
-            return tTreeNode.close(visibleIndex);
+            return tTreeNode.close(visibleIndex, notify);
         }
         return false;
     }
 
-    public boolean close(@NonNull T visibleItem) {
+    public boolean close(@NonNull T visibleItem, boolean notify) {
         for (int i = 0, sz = mFlattened.size(); i < sz; i++) {
             if (itemEqual(mFlattened.get(i).data, visibleItem)) {
-                return closeAt(i);
+                return closeAt(i, notify);
             }
         }
         return false;
