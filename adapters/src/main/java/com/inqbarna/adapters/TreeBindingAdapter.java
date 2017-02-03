@@ -130,7 +130,11 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
 
                 final int numContributingChild = countContributing();
 
-                mAdapter.mFlattened.subList(yourIdxInFlat + 1, yourIdxInFlat + 1 + numContributingChild).clear();
+                List<TreeNode<T>> childNodes = mAdapter.mFlattened.subList(yourIdxInFlat + 1, yourIdxInFlat + 1 + numContributingChild);
+                for (TreeNode<?> tn : childNodes) {
+                    tn.mOpened = false;
+                }
+                childNodes.clear();
                 if (notify) {
                     mAdapter.notifyItemRangeRemoved(yourIdxInFlat + 1, numContributingChild);
                 }
