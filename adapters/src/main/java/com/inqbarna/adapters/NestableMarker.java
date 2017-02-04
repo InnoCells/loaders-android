@@ -11,4 +11,5 @@ import java.util.List;
 
 public interface NestableMarker<T extends NestableMarker<T>> extends TypeMarker {
     @NonNull List<T> children();
+    @NonNull Object getKey();
 }

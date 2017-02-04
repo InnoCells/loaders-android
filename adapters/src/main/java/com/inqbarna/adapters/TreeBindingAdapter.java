@@ -4,7 +4,11 @@ import android.support.annotation.NonNull;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -13,8 +17,8 @@ import java.util.List;
 
 public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdapter {
 
-    private List<TreeNode<T>> mFlattened;
-    private List<TreeNode<T>> mTree;
+    private List<TreeNodeImpl<T>> mFlattened;
+    private List<TreeNodeImpl<T>> mTree;
 
     public TreeBindingAdapter() {
         mFlattened = new ArrayList<>();
@@ -22,7 +26,6 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
     }
 
     public void setItems(List<? extends T> items) {
-        final boolean wasEmpty = mFlattened.isEmpty();
         mFlattened.clear();
         mTree.clear();
         addItems(items, false);
@@ -36,7 +39,7 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
     public void addItems(@NonNull List<? extends T> items, boolean notify) {
         int firstIdx = mFlattened.size();
         for (T item : items) {
-            final TreeNode<T> node = new TreeNode<>(this, item); // create node, by default closed...
+            final TreeNodeImpl<T> node = new TreeNodeImpl<>(this, item); // create node, by default closed...
             mFlattened.add(node); // input items, are considered top-level, thus inserted directly to flattened list
             mTree.add(node); // top-level nodes, never can go away
             // wen colapsed mFlattened and mTree are equal
@@ -56,25 +59,63 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         return mFlattened.size();
     }
 
-    protected List<? extends T> getToplevelItems() {
+    protected List<? extends T> getToplevelItemsData() {
         return new DataExtractList<>(mTree);
     }
 
-    protected List<? extends T> getFlattenedItems() {
+    protected List<? extends T> getFlattenedItemsData() {
         return new DataExtractList<>(mFlattened);
     }
+
+    protected List<? extends TreeNode<T>> getToplevelItems() {
+        return Collections.unmodifiableList(mTree);
+    }
+
+    protected List<? extends TreeNode<T>> getFlattenedItems() {
+        return Collections.unmodifiableList(mFlattened);
+    }
+
+    protected TreeNode<T> commonParent(TreeNode<T> a, TreeNode<T> b) {
+        Set<TreeNode<T>> aParents = new HashSet<>();
+        Set<TreeNode<T>> bParents = new HashSet<>();
+        TreeNode<T> aParent = a;
+        TreeNode<T> bParent = b;
+        while (true) {
+            aParent = aParent != null ? aParent.getParent() : null;
+            bParent = bParent != null ? bParent.getParent() : null;
+            if (null == aParent && null == bParent) {
+                return null; // no common parents
+            }
+            if (null != aParent && aParent == bParent) {
+                return aParent;
+            }
+            if (null != aParent) {
+                if (bParents.contains(aParent)) {
+                    return aParent;
+                }
+                aParents.add(aParent);
+            }
+            if (null != bParent) {
+                if (aParents.contains(bParent)) {
+                    return bParent;
+                }
+                bParents.add(bParent);
+            }
+        }
+    }
+
 
     private static class DataExtractList<T extends NestableMarker<T>> extends AbstractList<T> {
         private final List<TreeNode<T>> mSource;
 
-        public DataExtractList(List<TreeNode<T>> source) {
-            mSource = source;
+        DataExtractList(List<? extends TreeNode<T>> source) {
+            mSource = new ArrayList<>(source);
         }
 
         @Override
         public T get(int index) {
             final TreeNode<T> tTreeNode = mSource.get(index);
-            return tTreeNode.data;
+            return tTreeNode.getData();
         }
 
         @Override
@@ -83,22 +124,32 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         }
     }
 
-
-    private static class TreeNode<T extends NestableMarker<T>> {
+    private static class TreeNodeImpl<T extends NestableMarker<T>> implements TreeNode<T> {
         final boolean hasChildren;
         private final TreeNode<T> mParent;
         boolean mOpened;
         final int numChilren;
         final T data;
-        private List<TreeNode<T>> mChildNodes;
+        private List<TreeNodeImpl<T>> mChildNodes;
 
         private final TreeBindingAdapter<T> mAdapter;
 
-        public TreeNode(TreeBindingAdapter<T> adapter, @NonNull T marker) {
+        public TreeNodeImpl(TreeBindingAdapter<T> adapter, @NonNull T marker) {
             this(adapter, marker, null);
         }
 
-        public TreeNode(TreeBindingAdapter<T> adapter, @NonNull T marker, TreeNode parent) {
+        @Override
+        public TreeNode<T> getParent() {
+            return mParent;
+        }
+
+
+        @Override
+        public boolean isOpened() {
+            return mOpened;
+        }
+
+        public TreeNodeImpl(TreeBindingAdapter<T> adapter, @NonNull T marker, TreeNode parent) {
             mParent = parent;
             mAdapter = adapter;
             // closed state by default
@@ -106,14 +157,14 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
             numChilren = children.size();
             mChildNodes = new ArrayList<>(numChilren);
             for (T item : children) {
-                mChildNodes.add(new TreeNode<>(mAdapter, item, this));
+                mChildNodes.add(new TreeNodeImpl<>(mAdapter, item, this));
             }
             data = marker;
             hasChildren = numChilren > 0;
             mOpened = false;
         }
 
-        public boolean open(int yourIdxInFlat, boolean notify) {
+        boolean open(int yourIdxInFlat, boolean notify) {
             if (!mOpened && hasChildren) {
                 mAdapter.mFlattened.addAll(yourIdxInFlat + 1, mChildNodes);
                 if (notify) {
@@ -125,13 +176,24 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
             return false;
         }
 
-        public boolean close(int yourIdxInFlat, boolean notify) {
+        private int findIndexOf(TreeNode<T> node) {
+            List<TreeNodeImpl<T>> mFlattened1 = mAdapter.mFlattened;
+            for (int i = 0, mFlattened1Size = mFlattened1.size(); i < mFlattened1Size; i++) {
+                TreeNode<T> n = mFlattened1.get(i);
+                if (itemEqual(n.getData(), node.getData())) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        boolean close(int yourIdxInFlat, boolean notify) {
             if (mOpened && hasChildren) {
 
                 final int numContributingChild = countContributing();
 
-                List<TreeNode<T>> childNodes = mAdapter.mFlattened.subList(yourIdxInFlat + 1, yourIdxInFlat + 1 + numContributingChild);
-                for (TreeNode<?> tn : childNodes) {
+                List<TreeNodeImpl<T>> childNodes = mAdapter.mFlattened.subList(yourIdxInFlat + 1, yourIdxInFlat + 1 + numContributingChild);
+                for (TreeNodeImpl<?> tn : childNodes) {
                     tn.mOpened = false;
                 }
                 childNodes.clear();
@@ -148,17 +210,83 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
             int count = 0;
             if (mOpened) {
                 count += numChilren;
-                for (TreeNode<?> node : mChildNodes) {
+                for (TreeNodeImpl<?> node : mChildNodes) {
                     count += node.countContributing();
                 }
             }
             return count;
         }
+
+        @Override
+        public T getData() {
+            return data;
+        }
+
+        @Override
+        public boolean open(boolean notify) {
+            int indexOf = findIndexOf(this);
+            if (indexOf >= 0) {
+                return open(indexOf, notify);
+            }
+            return false;
+        }
+
+        @Override
+        public boolean close(boolean notify) {
+            int indexOf = findIndexOf(this);
+            if (indexOf >= 0) {
+                return close(indexOf, notify);
+            }
+            return false;
+        }
+
+        @Override
+        public boolean closeChilds(boolean notify) {
+            boolean retVal = false;
+            for (TreeNode<?> n : mChildNodes) {
+                retVal |= n.close(notify);
+            }
+            return retVal;
+        }
+
+        @Override
+        public boolean isChild(TreeNode<T> other, boolean findClosed) {
+            boolean retVal = false;
+            if (findClosed || mOpened) {
+                Iterator<TreeNodeImpl<T>> iterator = mChildNodes.iterator();
+                while (retVal == false && iterator.hasNext()) {
+                    TreeNode<T> child = iterator.next();
+                    retVal |= (child == other) || child.isChild(other, findClosed);
+                }
+            }
+            return retVal;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            TreeNodeImpl<?> treeNode = (TreeNodeImpl<?>) o;
+
+            if (mOpened != treeNode.mOpened) return false;
+            if (numChilren != treeNode.numChilren) return false;
+            return data.getKey().equals(treeNode.data.getKey());
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = (mOpened ? 1 : 0);
+            result = 31 * result + numChilren;
+            result = 31 * result + data.getKey().hashCode();
+            return result;
+        }
     }
 
     public boolean isExpanded(T item) {
         for (int i = 0, sz = mFlattened.size(); i < sz; i++) {
-            final TreeNode<T> treeNode = mFlattened.get(i);
+            final TreeNodeImpl<T> treeNode = mFlattened.get(i);
             if (itemEqual(treeNode.data, item)) {
                 return treeNode.mOpened;
             }
@@ -168,7 +296,7 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
 
     public boolean openAt(int visibleIndex, boolean notify) {
         if (visibleIndex >= 0 && visibleIndex < mFlattened.size()) {
-            final TreeNode<T> tTreeNode = mFlattened.get(visibleIndex);
+            final TreeNodeImpl<T> tTreeNode = mFlattened.get(visibleIndex);
             return tTreeNode.open(visibleIndex, notify);
         }
         return false;
@@ -185,7 +313,7 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
 
     public boolean closeAt(int visibleIndex, boolean notify) {
         if (visibleIndex >= 0 && visibleIndex < mFlattened.size()) {
-            final TreeNode<T> tTreeNode = mFlattened.get(visibleIndex);
+            final TreeNodeImpl<T> tTreeNode = mFlattened.get(visibleIndex);
             return tTreeNode.close(visibleIndex, notify);
         }
         return false;
@@ -201,7 +329,7 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
     }
 
 
-    private boolean itemEqual(@NonNull T aValue, @NonNull T bValue) {
+    private static <T extends NestableMarker<T>> boolean itemEqual(@NonNull T aValue, @NonNull T bValue) {
         if (aValue == bValue) {
             return true;
         }
