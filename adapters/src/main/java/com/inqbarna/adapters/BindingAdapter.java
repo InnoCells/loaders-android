@@ -1,5 +1,6 @@
 package com.inqbarna.adapters;
 
+import android.databinding.DataBindingComponent;
 import android.databinding.DataBindingUtil;
 import android.databinding.ViewDataBinding;
 import android.support.v7.widget.RecyclerView;
@@ -14,6 +15,8 @@ import android.view.ViewGroup;
 public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder> {
     private ItemBinder mItemBinder;
 
+    private android.databinding.DataBindingComponent mOverrideComponent;
+
     public void setItemBinder(ItemBinder itemBinder) {
         mItemBinder = itemBinder;
     }
@@ -26,8 +29,16 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
         checkBinder();
 
         final ViewDataBinding dataBinding;
-        dataBinding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), viewType, parent, false);
+        if (null == mOverrideComponent) {
+            dataBinding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), viewType, parent, false);
+        } else {
+            dataBinding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), viewType, parent, false, mOverrideComponent);
+        }
         return new BindingHolder(dataBinding);
+    }
+
+    public void setOverrideComponent(android.databinding.DataBindingComponent overrideComponent) {
+        mOverrideComponent = overrideComponent;
     }
 
     @Override
