@@ -36,7 +36,13 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
 
     @Override
     public void onBindViewHolder(BindingHolder holder, int position) {
-        mAdapterDelegate.onBindViewHolder(holder, position, getDataAt(position));
+        TypeMarker dataAt = getDataAt(position);
+        mAdapterDelegate.onBindViewHolder(holder, position, dataAt);
+        if (dataAt instanceof GroupIndicator) {
+            GroupIndicator indicator = (GroupIndicator) dataAt;
+            holder.setColor(indicator.color());
+            holder.setEnabled(indicator.enabled());
+        }
     }
 
     protected abstract TypeMarker getDataAt(int position);

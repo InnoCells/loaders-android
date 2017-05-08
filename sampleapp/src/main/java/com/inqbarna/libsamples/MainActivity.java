@@ -1,19 +1,21 @@
 package com.inqbarna.libsamples;
 
-import android.databinding.ViewDataBinding;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Toast;
 
-import com.inqbarna.adapters.BindingAdapter;
+import com.inqbarna.adapters.ItemBinder;
 import com.inqbarna.adapters.RxPaginatedBindingAdapter;
 import com.inqbarna.adapters.TypeMarker;
 import com.inqbarna.adapters.VariableBinding;
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
-import com.inqbarna.rxutil.paging.ErrorCallback;
 import com.inqbarna.rxutil.paging.PageFactory;
+import com.inqbarna.rxutil.paging.RxPagingCallback;
+import com.inqbarna.rxutil.paging.RxPagingConfig;
 
 import java.util.concurrent.TimeUnit;
 
@@ -23,6 +25,8 @@ import rx.Observable;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
+import static com.inqbarna.libsamples.Root.borrame;
+
 public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.list)
@@ -31,12 +35,23 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.progress)
     View progress;
 
-    private ErrorCallback mErrorCallback = new ErrorCallback() {
+    public static Intent getCallingIntent(Context context) {
+        return new Intent(context, MainActivity.class);
+    }
+
+    private RxPagingCallback mPagingCallback = new RxPagingCallback() {
         @Override
         public void onError(Throwable throwable) {
             Toast.makeText(MainActivity.this, "Error detectado", Toast.LENGTH_LONG).show();
         }
+
+        @Override
+        public void onCompleted() {
+
+        }
     };
+
+
     private PaginatedAdapterDelegate.ProgressHintListener mProgressListener = new PaginatedAdapterDelegate.ProgressHintListener() {
         @Override
         public void setLoadingState(boolean loading) {
@@ -44,15 +59,11 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private BindingAdapter.ItemBinder mItemBinder = new BindingAdapter.ItemBinder() {
-        @Override
-        public void setHandlers(ViewDataBinding dataBinding, int viewType) {
-            /* no-op */
-        }
+    private ItemBinder mItemBinder = new ItemBinder() {
 
         @Override
         public void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos) {
-            variableBinding.bindValue(BR.model, dataAtPos);
+            variableBinding.bindValue(com.inqbarna.libsamples.BR.model, dataAtPos);
         }
     };
     private RxPaginatedBindingAdapter<TestVM> mAdapter;
@@ -77,7 +88,9 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
 
-        mAdapter = new RxPaginatedBindingAdapter<>(mErrorCallback, mProgressListener);
+
+
+        mAdapter = new RxPaginatedBindingAdapter<>(mPagingCallback, new RxPagingConfig.Builder().build(), mProgressListener);
         mAdapter.setItemBinder(mItemBinder);
         list.setAdapter(mAdapter);
 

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <data>
+        <variable name="model" type="com.inqbarna.libsamples.NumberVM"/>
+    </data>
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+              android:padding="10dp"
+              tools:text="8"
+              android:background="#c777"
+              android:minWidth="60dp"
+              android:gravity="center"
+              android:layout_margin="5dp"
+              android:onClick="@{() -> model.toggle(model)}"
+              android:text="@{model.numberStr}"
+    />
+</layout>
