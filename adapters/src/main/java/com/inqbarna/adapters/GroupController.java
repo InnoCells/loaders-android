@@ -25,6 +25,10 @@ public class GroupController {
         return updateGroupWithColor(items, groupHead, groupHead.groupSize(), false, groupHead.attributes().color());
     }
 
+    public static Result toggleGroup(List<? extends GroupIndicator> items, GroupHead groupHead) {
+        return updateGroupWithColor(items, groupHead, groupHead.groupSize(), !groupHead.enabled(), groupHead.attributes().color());
+    }
+
     public static Result updateGroupWithColor(List<? extends GroupIndicator> items, GroupIndicator target, int groupSize, boolean enable, int groupColor) {
         int indexOf = items.indexOf(target);
         if (indexOf < 0) {
