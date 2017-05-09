@@ -6,26 +6,22 @@ package com.inqbarna.adapters;
  */
 
 public class BasicIndicatorDelegate implements GroupIndicator {
-    private int     mColor;
+    private final GroupAttributes mGroupAttributes = new GroupAttributes();
     private boolean mEnabled;
-
-    @Override
-    public int color() {
-        return mColor;
-    }
 
     @Override
     public boolean enabled() {
         return mEnabled;
     }
 
-    @Override
-    public void setColor(int color) {
-        mColor = color;
-    }
 
     @Override
     public void setEnabled(boolean enabled) {
         mEnabled = enabled;
+    }
+
+    @Override
+    public GroupAttributes attributes() {
+        return mGroupAttributes;
     }
 }

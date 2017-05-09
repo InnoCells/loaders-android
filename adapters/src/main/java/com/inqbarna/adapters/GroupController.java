@@ -19,13 +19,13 @@ public class GroupController {
     }
 
     public static Result enableGroup(List<? extends GroupIndicator> items, GroupHead groupHead) {
-        return updateGroup(items, groupHead, groupHead.groupSize(), true, groupHead.color());
+        return updateGroupWithColor(items, groupHead, groupHead.groupSize(), true, groupHead.attributes().color());
     }
     public static Result disableGroup(List<? extends GroupIndicator> items, GroupHead groupHead) {
-        return updateGroup(items, groupHead, groupHead.groupSize(), false, groupHead.color());
+        return updateGroupWithColor(items, groupHead, groupHead.groupSize(), false, groupHead.attributes().color());
     }
 
-    public static Result updateGroup(List<? extends GroupIndicator> items, GroupIndicator target, int groupSize, boolean enable, int groupColor) {
+    public static Result updateGroupWithColor(List<? extends GroupIndicator> items, GroupIndicator target, int groupSize, boolean enable, int groupColor) {
         int indexOf = items.indexOf(target);
         if (indexOf < 0) {
             Timber.w("Trying to enable group that is not within given items. Won't do anything");
@@ -39,7 +39,7 @@ public class GroupController {
             GroupIndicator indicator = iterator.next();
             indicator.setEnabled(enable);
             if (Integer.MIN_VALUE != groupColor) {
-                indicator.setColor(groupColor);
+                indicator.attributes().setColor(groupColor);
             }
             count--;
         }

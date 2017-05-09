@@ -40,8 +40,15 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
         mAdapterDelegate.onBindViewHolder(holder, position, dataAt);
         if (dataAt instanceof GroupIndicator) {
             GroupIndicator indicator = (GroupIndicator) dataAt;
-            holder.setColor(indicator.color());
-            holder.setEnabled(indicator.enabled());
+            boolean enabled = indicator.enabled();
+            GroupAttributes holderAttrs = holder.attributes();
+            if (enabled) {
+                holder.setEnabled(true);
+                holderAttrs.setTo(indicator.attributes());
+            } else {
+                holder.setEnabled(false);
+                holderAttrs.reset();
+            }
         }
     }
 

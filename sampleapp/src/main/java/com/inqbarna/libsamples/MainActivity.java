@@ -25,8 +25,6 @@ import rx.Observable;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
-import static com.inqbarna.libsamples.Root.borrame;
-
 public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.list)

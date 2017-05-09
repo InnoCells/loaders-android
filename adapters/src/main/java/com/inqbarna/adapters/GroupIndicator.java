@@ -6,8 +6,7 @@ package com.inqbarna.adapters;
  */
 
 public interface GroupIndicator {
-    void setColor(int color);
     void setEnabled(boolean enabled);
-    int color();
     boolean enabled();
+    GroupAttributes attributes();
 }

@@ -71,7 +71,7 @@ open class NumbersActivity : ListBaseActivity<NumberVM>() {
         override fun toggleItem(groupItem: GroupIndicator) {
             val head = groupItem as? GroupHead
             if (null != head) {
-                val res = GroupController.updateGroup(itemList, head, head.groupSize(), !head.enabled(), head.color())
+                val res = GroupController.updateGroupWithColor(itemList, head, head.groupSize(), !head.enabled(), head.attributes().color())
                 res.notifyOn(adapter)
             }
         }
@@ -123,7 +123,7 @@ open class NumberVM(val number : Int, internal val toggler: Toggler) : TypeMarke
 
 class HeadNumberVM(color : Int, val size : Int, numberVM : NumberVM) : NumberVM(numberVM.number, numberVM.toggler), GroupHead {
     init {
-        setColor(color)
+        attributes().setColor(color)
     }
     override fun groupSize(): Int {
         return size

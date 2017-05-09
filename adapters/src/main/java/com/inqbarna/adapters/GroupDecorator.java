@@ -45,7 +45,7 @@ public class GroupDecorator extends RecyclerView.ItemDecoration {
                 GroupIndicator indicator = (GroupIndicator) holder;
                 if (indicator.enabled()) {
                     layoutManager.getDecoratedBoundsWithMargins(child, mDrawRect);
-                    mPaint.setColor(indicator.color());
+                    mPaint.setColor(indicator.attributes().color());
                     c.drawRect(mDrawRect, mPaint);
 
                     if (DEBUG) {

@@ -22,18 +22,13 @@ public class BindingHolder extends RecyclerView.ViewHolder implements GroupIndic
     }
 
     @Override
-    public int color() {
-        return mIndicatorHolderDelegate.color();
+    public GroupAttributes attributes() {
+        return mIndicatorHolderDelegate.attributes();
     }
 
     @Override
     public boolean enabled() {
         return mIndicatorHolderDelegate.enabled();
-    }
-
-    @Override
-    public void setColor(int color) {
-        mIndicatorHolderDelegate.setColor(color);
     }
 
     @Override
