@@ -1,5 +1,6 @@
 package com.inqbarna.adapters;
 
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 
 import java.util.List;
@@ -30,6 +31,16 @@ public class GroupController {
     }
 
     public static Result updateGroupWithColor(List<? extends GroupIndicator> items, GroupIndicator target, int groupSize, boolean enable, int groupColor) {
+
+        GroupAttributes attributes = new GroupAttributes();
+        attributes.setColor(groupColor);
+
+        return updateGroupWithAttributes(items, target, groupSize, enable, attributes);
+    }
+
+    @NonNull
+    public static Result updateGroupWithAttributes(
+            List<? extends GroupIndicator> items, GroupIndicator target, int groupSize, boolean enable, @NonNull GroupAttributes attributes) {
         int indexOf = items.indexOf(target);
         if (indexOf < 0) {
             Timber.w("Trying to enable group that is not within given items. Won't do anything");
@@ -42,9 +53,7 @@ public class GroupController {
         while (iterator.hasNext() && count > 0) {
             GroupIndicator indicator = iterator.next();
             indicator.setEnabled(enable);
-            if (Integer.MIN_VALUE != groupColor) {
-                indicator.attributes().setColor(groupColor);
-            }
+            indicator.attributes().setTo(attributes);
             count--;
         }
 
@@ -54,7 +63,6 @@ public class GroupController {
 
         return new ResultImpl(indexOf, groupSize - count);
     }
-
 
     public interface Result {
         void notifyOn(RecyclerView.Adapter adapter);
