@@ -5,6 +5,7 @@ import android.support.annotation.NonNull;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -125,12 +126,13 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
     }
 
     private static class TreeNodeImpl<T extends NestableMarker<T>> implements TreeNode<T> {
-        final boolean hasChildren;
+        private boolean hasChildren;
         private final TreeNode<T> mParent;
         boolean mOpened;
-        final int numChilren;
+        private int numChilren;
         final T data;
         private List<TreeNodeImpl<T>> mChildNodes;
+        private List<TreeNodeImpl<T>> mExpandedNodes = Collections.emptyList();
 
         private final TreeBindingAdapter<T> mAdapter;
 
@@ -153,27 +155,37 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
             mParent = parent;
             mAdapter = adapter;
             // closed state by default
-            final List<T> children = marker.children();
-            numChilren = children.size();
-            mChildNodes = new ArrayList<>(numChilren);
-            for (T item : children) {
-                mChildNodes.add(new TreeNodeImpl<>(mAdapter, item, this));
-            }
+            computeChildren(marker, true);
             data = marker;
-            hasChildren = numChilren > 0;
             mOpened = false;
         }
 
         boolean open(int yourIdxInFlat, boolean notify) {
-            if (!mOpened && hasChildren) {
-                mAdapter.mFlattened.addAll(yourIdxInFlat + 1, mChildNodes);
-                if (notify) {
-                    mAdapter.notifyItemRangeInserted(yourIdxInFlat + 1, numChilren);
+            if (!mOpened) {
+                computeChildren(data, false);
+                if (hasChildren) {
+                    mExpandedNodes = new ArrayList<>(mChildNodes);
+                    mAdapter.mFlattened.addAll(yourIdxInFlat + 1, mExpandedNodes);
+                    if (notify) {
+                        mAdapter.notifyItemRangeInserted(yourIdxInFlat + 1, numChilren);
+                    }
+                    mOpened = true;
+                    return true;
                 }
-                mOpened = true;
-                return true;
             }
             return false;
+        }
+
+        private void computeChildren(T marker, boolean force) {
+            if (force || marker instanceof DynamicNestableMarker) {
+                final List<T> children = marker.children();
+                numChilren = children.size();
+                mChildNodes = new ArrayList<>(numChilren);
+                for (T item : children) {
+                    mChildNodes.add(new TreeNodeImpl<>(mAdapter, item, this));
+                }
+                hasChildren = numChilren > 0;
+            }
         }
 
         private int findIndexOf(TreeNode<T> node) {
@@ -188,18 +200,20 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         }
 
         boolean close(int yourIdxInFlat, boolean notify) {
-            if (mOpened && hasChildren) {
+            if (mOpened && mExpandedNodes.size() > 0) {
 
                 final int numContributingChild = countContributing();
 
                 List<TreeNodeImpl<T>> childNodes = mAdapter.mFlattened.subList(yourIdxInFlat + 1, yourIdxInFlat + 1 + numContributingChild);
                 for (TreeNodeImpl<?> tn : childNodes) {
                     tn.mOpened = false;
+                    tn.mExpandedNodes = Collections.emptyList();
                 }
                 childNodes.clear();
                 if (notify) {
                     mAdapter.notifyItemRangeRemoved(yourIdxInFlat + 1, numContributingChild);
                 }
+                mExpandedNodes = Collections.emptyList();
                 mOpened = false;
                 return true;
             }
@@ -209,8 +223,11 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         private int countContributing() {
             int count = 0;
             if (mOpened) {
+                if (numChilren != mExpandedNodes.size()) {
+                    throw new ConcurrentModificationException("Cannot change child nodes while node is expanded");
+                }
                 count += numChilren;
-                for (TreeNodeImpl<?> node : mChildNodes) {
+                for (TreeNodeImpl<?> node : mExpandedNodes) {
                     count += node.countContributing();
                 }
             }
