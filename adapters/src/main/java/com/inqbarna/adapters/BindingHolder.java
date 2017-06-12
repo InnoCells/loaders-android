@@ -10,12 +10,30 @@ import java.util.Collection;
  * @author Ricard Aparicio <ricard.aparicio@inqbarna.com>
  * @version 1.0 17/08/16
  */
-public class BindingHolder extends RecyclerView.ViewHolder {
+public class BindingHolder extends RecyclerView.ViewHolder implements GroupIndicator {
     private ViewDataBinding mDataBinding;
+
+    private BasicIndicatorDelegate mIndicatorHolderDelegate;
 
     BindingHolder(ViewDataBinding binding) {
         super(binding.getRoot());
         mDataBinding = binding;
+        mIndicatorHolderDelegate = new BasicIndicatorDelegate();
+    }
+
+    @Override
+    public GroupAttributes attributes() {
+        return mIndicatorHolderDelegate.attributes();
+    }
+
+    @Override
+    public boolean enabled() {
+        return mIndicatorHolderDelegate.enabled();
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        mIndicatorHolderDelegate.setEnabled(enabled);
     }
 
     public void bindValues(Collection<Pair<Integer, Object>> values) {
