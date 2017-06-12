@@ -1,7 +1,7 @@
 package com.inqbarna.adapters;
 
 /**
- * Created by headhunter on 3/02/17.
+ * Created by David García <david.garcia@inqbarna.com> on 3/02/17.
  */
 
 public interface TreeNode<T extends NestableMarker<T>> {
@@ -18,4 +18,8 @@ public interface TreeNode<T extends NestableMarker<T>> {
     boolean closeChilds(boolean notify);
 
     boolean isChild(TreeNode<T> other, boolean findClosed);
+
+    boolean openToChild(TreeNode<T> child, boolean notify);
+
+    TreeNode<T> root();
 }
