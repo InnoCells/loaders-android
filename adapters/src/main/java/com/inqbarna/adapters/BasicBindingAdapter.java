@@ -57,7 +57,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     }
 
     @Override
-    protected T getDataAt(int position) {
+    public T getDataAt(int position) {
         return mData.get(position);
     }
 

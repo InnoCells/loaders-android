@@ -1,6 +1,7 @@
 package com.inqbarna.adapters;
 
 import android.databinding.DataBindingUtil;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 
