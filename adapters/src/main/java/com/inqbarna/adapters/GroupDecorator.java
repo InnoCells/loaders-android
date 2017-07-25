@@ -4,6 +4,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
@@ -15,6 +16,7 @@ import android.view.View;
 public class GroupDecorator extends RecyclerView.ItemDecoration {
 
     private Rect  mDrawRect;
+    private Rect  mDbgRect;
     private Paint mPaint;
 
     private final boolean DEBUG = false;
@@ -30,12 +32,19 @@ public class GroupDecorator extends RecyclerView.ItemDecoration {
             mDbgPaint.setStyle(Paint.Style.STROKE);
             mDbgPaint.setStrokeWidth(1);
             mDbgPaint.setColor(Color.RED);
+            mDbgRect = new Rect();
         }
     }
 
     @Override
     public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
-        super.getItemOffsets(outRect, view, parent, state);
+        outRect.setEmpty();
+        final GroupIndicator groupIndicator = getGroupIndicator(parent, view);
+        if (null != groupIndicator) {
+            final GroupAttributes attributes = groupIndicator.attributes();
+            outRect.top += attributes.groupMarginTop();
+            outRect.bottom += attributes.groupMarginBottom();
+        }
     }
 
     @Override
@@ -44,22 +53,34 @@ public class GroupDecorator extends RecyclerView.ItemDecoration {
         int count = layoutManager.getChildCount();
         for (int i = 0; i < count; i++) {
             View child = layoutManager.getChildAt(i);
-            int adapterPosition = parent.getChildAdapterPosition(child);
-            RecyclerView.ViewHolder holder = parent.findViewHolderForAdapterPosition(adapterPosition);
-            if (holder instanceof GroupIndicator) {
-                GroupIndicator indicator = (GroupIndicator) holder;
-                if (indicator.enabled()) {
-                    layoutManager.getDecoratedBoundsWithMargins(child, mDrawRect);
-                    mPaint.setColor(indicator.attributes().color());
-                    c.drawRect(mDrawRect, mPaint);
-
-                    if (DEBUG) {
-                        c.drawRect(mDrawRect, mDbgPaint);
-                    }
+            GroupIndicator indicator = getGroupIndicator(parent, child);
+            if (null != indicator && indicator.enabled()) {
+                layoutManager.getDecoratedBoundsWithMargins(child, mDrawRect);
+                if (DEBUG) {
+                    mDbgRect.set(mDrawRect);
                 }
+                final GroupAttributes attributes = indicator.attributes();
+                mDrawRect.top += attributes.groupMarginTop();
+                mDrawRect.bottom -= attributes.groupMarginBottom();
+                mPaint.setColor(attributes.color());
+                c.drawRect(mDrawRect, mPaint);
 
+                if (DEBUG) {
+                    c.drawRect(mDbgRect, mDbgPaint);
+                }
             }
         }
     }
 
+    @Nullable
+    private GroupIndicator getGroupIndicator(RecyclerView parent, View child) {
+        int adapterPosition = parent.getChildAdapterPosition(child);
+        RecyclerView.ViewHolder holder = parent.findViewHolderForAdapterPosition(adapterPosition);
+        GroupIndicator indicator = null;
+        if (holder instanceof GroupIndicator) {
+            indicator = (GroupIndicator) holder;
+
+        }
+        return indicator;
+    }
 }

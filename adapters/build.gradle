@@ -30,4 +30,7 @@ dependencies {
     provided "com.jakewharton.timber:timber:4.3.1"
     compile "com.android.support:support-v4:${rootProject.ext.supportLibsVersion}"
     compile "com.android.support:recyclerview-v7:${rootProject.ext.supportLibsVersion}"
+    compile (group: 'com.google.guava', name: 'guava', version: '22.0-android') {
+        exclude group: 'com.google.code.findbugs'
+    }
 }
