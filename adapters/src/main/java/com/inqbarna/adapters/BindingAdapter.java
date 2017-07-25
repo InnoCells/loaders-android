@@ -100,11 +100,15 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
                 if (isTopData(entry.getKey(), position, getSpanCount(), getSpanSizeLookup())) {
                     GroupAttributes headAttrs = entry.getValue();
                     holderAttrs.setGroupMarginTop(headAttrs.groupMarginTop());
+                } else {
+                    holderAttrs.setGroupMarginTop(0);
                 }
 
                 if (isBottomData(entry.getKey(), position, getSpanCount(), getSpanSizeLookup())) {
                     GroupAttributes headAttrs = entry.getValue();
                     holderAttrs.setGroupMarginBottom(headAttrs.groupMarginBottom());
+                } else {
+                    holderAttrs.setGroupMarginBottom(0);
                 }
             } else {
                 holder.setEnabled(false);
