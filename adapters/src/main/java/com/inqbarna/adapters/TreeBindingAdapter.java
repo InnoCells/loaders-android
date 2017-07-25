@@ -1,13 +1,20 @@
 package com.inqbarna.adapters;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.TreeTraverser;
 
 import java.util.AbstractList;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
+import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -20,6 +27,8 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
 
     private List<TreeNodeImpl<T>> mFlattened;
     private List<TreeNodeImpl<T>> mTree;
+
+    private static final TreeNodeImpl ROOT = new TreeNodeImpl();
 
     public TreeBindingAdapter() {
         mFlattened = new ArrayList<>();
@@ -105,6 +114,52 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         }
     }
 
+    @SuppressWarnings("unchecked")
+    protected Iterable<TreeNode<T>> preOrder() {
+        return new Traverser()
+                .preOrderTraversal(ROOT)
+                .filter(new Predicate<TreeNodeImpl<T>>() {
+                    @Override
+                    public boolean apply(@Nullable TreeNodeImpl<T> input) {
+                        return input != ROOT;
+                    }
+                });
+    }
+
+    protected Iterable<T> depthIterationOverChilds(TreeNode<T> node) {
+        if (!(node instanceof TreeNodeImpl)) {
+            return ImmutableList.of();
+        }
+
+        TreeNodeImpl<T> root = (TreeNodeImpl<T>) node;
+        return new Traverser()
+                .preOrderTraversal(root)
+                .transform(new Function<TreeNodeImpl<T>, T>() {
+                    @Nullable
+                    @Override
+                    public T apply(@Nullable TreeNodeImpl<T> input) {
+                        return null != input ? input.getData() : null;
+                    }
+                });
+    }
+
+    protected void applyInDepth(TreeNode<T> node, Function<T, Void> apply) {
+        for (T in : depthIterationOverChilds(node)) {
+            apply.apply(in);
+        }
+    }
+
+    private class Traverser extends TreeTraverser<TreeNodeImpl<T>> {
+        @Override
+        public Iterable<TreeNodeImpl<T>> children(TreeNodeImpl<T> root) {
+            if (root == ROOT) {
+                return mTree;
+            } else {
+                return root.mChildNodes;
+            }
+        }
+    }
+
 
     private static class DataExtractList<T extends NestableMarker<T>> extends AbstractList<T> {
         private final List<TreeNode<T>> mSource;
@@ -136,6 +191,25 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
 
         private final TreeBindingAdapter<T> mAdapter;
 
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("TreeNode{");
+            sb.append("opened=").append(mOpened);
+            sb.append(", children=").append(numChilren);
+            sb.append(", data=").append(data);
+            sb.append('}');
+            return sb.toString();
+        }
+
+        private TreeNodeImpl() {
+            // invalid node!
+            mAdapter = null;
+            data = null;
+            numChilren = 0;
+            mParent = null;
+            hasChildren = false;
+        }
+
         public TreeNodeImpl(TreeBindingAdapter<T> adapter, @NonNull T marker) {
             this(adapter, marker, null);
         }
@@ -151,7 +225,7 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
             return mOpened;
         }
 
-        public TreeNodeImpl(TreeBindingAdapter<T> adapter, @NonNull T marker, TreeNode parent) {
+        public TreeNodeImpl(TreeBindingAdapter<T> adapter, @NonNull T marker, TreeNode<T> parent) {
             mParent = parent;
             mAdapter = adapter;
             // closed state by default
@@ -185,6 +259,43 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
                     mChildNodes.add(new TreeNodeImpl<>(mAdapter, item, this));
                 }
                 hasChildren = numChilren > 0;
+            }
+        }
+
+        @Override
+        public boolean openToChild(TreeNode<T> child, boolean notify) {
+            Deque<TreeNode<T>> fifo = new ArrayDeque<>();
+            TreeNode<T> parent = child;
+            boolean isChild = false;
+            while (null != parent) {
+                fifo.push(parent);
+                if (this == parent) {
+                    isChild = true;
+                    break;
+                }
+                parent = parent.getParent();
+            }
+
+            if (!isChild) {
+                throw new IllegalArgumentException("The given child item is not a child of this node. Child = " + child + ", parent = " + this);
+            }
+
+            boolean allOpened = true;
+            while (!fifo.isEmpty()) {
+                TreeNode<T> toOpen = fifo.pop();
+                toOpen.open(notify);
+                allOpened &= toOpen.isOpened(); // we don't use ret value of open() because it return false if it was already open
+            }
+
+            return allOpened;
+        }
+
+        @Override
+        public TreeNode<T> root() {
+            if (null == mParent) {
+                return this;
+            } else {
+                return mParent.root();
             }
         }
 
@@ -268,15 +379,17 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
 
         @Override
         public boolean isChild(TreeNode<T> other, boolean findClosed) {
-            boolean retVal = false;
-            if (findClosed || mOpened) {
-                Iterator<TreeNodeImpl<T>> iterator = mChildNodes.iterator();
-                while (retVal == false && iterator.hasNext()) {
-                    TreeNode<T> child = iterator.next();
-                    retVal |= (child == other) || child.isChild(other, findClosed);
+            TreeNode<T> parent = other.getParent();
+            while (null != parent) {
+                if (!findClosed && !parent.isOpened())
+                    break;
+
+                if (this == parent) {
+                    return true;
                 }
+                parent = parent.getParent();
             }
-            return retVal;
+            return false;
         }
 
         @Override

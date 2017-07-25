@@ -1,6 +1,7 @@
 package com.inqbarna.adapters;
 
 import android.databinding.ViewDataBinding;
+import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
 import android.support.v7.widget.RecyclerView;
 
@@ -52,8 +53,12 @@ public class BindingHolder extends RecyclerView.ViewHolder implements GroupIndic
         }
     }
 
-    public ViewDataBinding getDataBinding() {
-        return mDataBinding;
+    @Nullable
+    public <T extends ViewDataBinding> T getDataBinding(Class<T> clazz) {
+        if (clazz.isAssignableFrom(mDataBinding.getClass())) {
+            return (T) mDataBinding;
+        }
+        return null;
     }
 
     SafeVariableBinding lockVars() {
