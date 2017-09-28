@@ -50,12 +50,22 @@ public class GroupController {
         int count = groupSize;
 
         ListIterator<? extends GroupIndicator> iterator = items.listIterator(indexOf);
+        GroupAttributes headAttr = target.attributes();
+        headAttr.setGroupHead(true).setGroupSize(groupSize);
         while (iterator.hasNext() && count > 0) {
             GroupIndicator indicator = iterator.next();
             indicator.setEnabled(enable);
-            indicator.attributes().setTo(attributes);
+            final GroupAttributes attr = indicator.attributes();
+            if (!attr.isGroupHead()) {
+                if (enable) {
+                    attr.setNonGroupValues(headAttr);
+                } else {
+                    attr.reset();
+                }
+            }
             count--;
         }
+
 
         if (count > 0) {
             Timber.w("Requested group change for %d items, but there were %d items left unchanged because list is not big enough", groupSize, count);
