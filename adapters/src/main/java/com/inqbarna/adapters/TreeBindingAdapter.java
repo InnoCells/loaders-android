@@ -1,6 +1,7 @@
 package com.inqbarna.adapters;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -15,9 +16,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
-import javax.annotation.Nullable;
 
 /**
  * @author David García <david.garcia@inqbarna.com>
