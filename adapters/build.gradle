@@ -30,7 +30,6 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
 	api project(':common')
     api project(':rxutil')
     api (group: 'com.google.guava', name: 'guava', version: '22.0-android') {
@@ -38,12 +37,11 @@ dependencies {
     }
 
     kapt "com.android.databinding:compiler:$plugin_version"
+    // Android databinding
+    kapt "com.android.databinding:compiler:$plugin_version"
 
-    compileOnly "com.jakewharton.timber:timber:4.5.1"
+    compileOnly "com.jakewharton.timber:timber:${timberVersion}"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
-    implementation "com.android.support:support-v4:${rootProject.ext.supportLibsVersion}"
-    implementation "com.android.support:recyclerview-v7:${rootProject.ext.supportLibsVersion}"
-    implementation (group: 'com.google.guava', name: 'guava', version: '22.0-android') {
-        exclude group: 'com.google.code.findbugs'
-    }
+    implementation "com.android.support:support-v4:${supportLibsVersion}"
+    implementation "com.android.support:recyclerview-v7:${supportLibsVersion}"
 }
