@@ -32,9 +32,8 @@ android {
 dependencies {
 	api project(':common')
     api project(':rxutil')
-    api (group: 'com.google.guava', name: 'guava', version: '22.0-android') {
-        exclude group: 'com.google.code.findbugs'
-    }
+    api (group: 'com.google.guava', name: 'guava', version: '22.0-android')
+    api group: 'com.google.code.findbugs', name: 'jsr305', version: '2.0.1'
 
     kapt "com.android.databinding:compiler:$plugin_version"
     // Android databinding
