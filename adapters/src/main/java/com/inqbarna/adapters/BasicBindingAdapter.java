@@ -1,8 +1,11 @@
 package com.inqbarna.adapters;
 
+import android.support.annotation.CallSuper;
+
 import com.inqbarna.common.AdapterSyncList;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -23,11 +26,18 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     }
 
     public void setItems(List<? extends T> items) {
+        for (T anItem : mData) {
+            onRemovingElement(anItem);
+        }
         mData.clear();
         if (null != items) {
             mData.addAll(items);
         }
         notifyDataSetChanged();
+    }
+
+    protected void onRemovingElement(T item) {
+        /* no-op */
     }
 
     public void addItems(List<? extends T> items) {
@@ -42,7 +52,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         if (null != item) {
             final int i = mData.indexOf(item);
             if (i >= 0) {
-                mData.remove(i);
+                onRemovingElement(mData.remove(i));
                 notifyItemRemoved(i);
             }
         }
