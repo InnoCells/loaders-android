@@ -1,11 +1,8 @@
 package com.inqbarna.adapters;
 
-import android.support.annotation.CallSuper;
-
 import com.inqbarna.common.AdapterSyncList;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -14,6 +11,7 @@ import java.util.List;
  */
 
 public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
+    public static final int INVALID_IDX = -1;
     private List<T> mData;
 
     protected BasicBindingAdapter() {
@@ -41,10 +39,15 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     }
 
     public void addItems(List<? extends T> items) {
+        addItems(INVALID_IDX, items);
+    }
+
+    public void addItems(int idx, List<? extends T> items) {
         if (null != items) {
             final int start = mData.size();
-            mData.addAll(items);
-            notifyItemRangeInserted(start, items.size());
+            boolean invalid = idx == INVALID_IDX;
+            mData.addAll(invalid ? start : idx, items);
+            notifyItemRangeInserted(invalid ? start : idx, items.size());
         }
     }
 
@@ -78,7 +81,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
     @Deprecated
     public static class OldBasicItemBinder<T> implements ItemBinder {
-        private final T mHandler;
+        private final T   mHandler;
         private final int mHandlerVar;
         private final int mModelVar;
 
