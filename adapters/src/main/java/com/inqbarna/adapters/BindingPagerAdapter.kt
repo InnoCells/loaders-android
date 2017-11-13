@@ -23,15 +23,6 @@ open class BasicPagerAdapter<T : TypeMarker> @JvmOverloads constructor(varId : I
         this.items = items.map(conv).toList()
     }
 
-    final override fun getItemPosition(`object` : Any?) : Int {
-        val viewDataBinding = if (`object` is ViewDataBinding) `object` else null
-        return getPositionOf(viewDataBinding.recoverData())
-    }
-
-    open protected fun getPositionOf(data : T?) : Int {
-        return PagerAdapter.POSITION_NONE
-    }
-
     override fun onItemBound(item : T) {
         /* no-op */
     }
@@ -55,13 +46,6 @@ open class BasicPagerAdapter<T : TypeMarker> @JvmOverloads constructor(varId : I
     companion object {
         @JvmStatic
         fun <R, T : TypeMarker> ofItems(varId : Int, items : List<R>, conv : (R) -> T) = BasicPagerAdapter(varId, items.map(conv).toList())
-
-        @JvmStatic
-        fun <T : TypeMarker> ViewDataBinding?.storeData(data : T) = this?.let { root.setTag(R.id.bindingData, data) }
-
-        @Suppress("UNCHECKED_CAST")
-        @JvmStatic
-        fun <T : TypeMarker> ViewDataBinding?.recoverData() : T? = this?.let { root.getTag(R.id.bindingData)?.let { it as T } }
     }
 }
 
@@ -81,6 +65,15 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
         helper.bindingComponent = bindingComponent
     }
 
+    final override fun getItemPosition(`object` : Any?) : Int {
+        val viewDataBinding = `object` as? ViewDataBinding
+        return getPositionOf(viewDataBinding.recoverData())
+    }
+
+    open protected fun getPositionOf(data : T?) : Int {
+        return PagerAdapter.POSITION_NONE
+    }
+
     override final fun isViewFromObject(view : View?, `object` : Any?) : Boolean = helper.isViewFromObject(view, `object`)
 
     override final fun instantiateItem(container : ViewGroup?, position : Int) : Any {
@@ -91,13 +84,21 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
     }
 
     abstract fun getDataAt(pos : Int) : T
-
     abstract fun onItemBound(item : T)
     abstract fun onBindingDestroyed(destroyedBinding : ViewDataBinding)
 
 
     override final fun destroyItem(container : ViewGroup?, position : Int, `object` : Any?) {
         helper.destroyItem(container, `object`)?.let { onBindingDestroyed(it) }
+    }
+
+    companion object {
+        @JvmStatic
+        fun <T : TypeMarker> ViewDataBinding?.storeData(data : T) = this?.let { root.setTag(R.id.bindingData, data) }
+
+        @Suppress("UNCHECKED_CAST")
+        @JvmStatic
+        fun <T : TypeMarker> ViewDataBinding?.recoverData() : T? = this?.let { root.getTag(R.id.bindingData) as? T }
     }
 }
 
@@ -108,7 +109,7 @@ internal class PagerAdapterHelper(var bindingComponent : DataBindingComponent? =
 
     fun instantiateItem(container : ViewGroup?, position : Int, dataAt : TypeMarker) : ViewDataBinding {
         val viewDataBinding = DataBindingUtil.inflate<ViewDataBinding>(LayoutInflater.from(container!!.context), dataAt.itemType, container, true, bindingComponent)
-        with(BasicPagerAdapter) {
+        with(BindingPagerAdapter) {
             viewDataBinding.storeData(dataAt)
         }
         binder.bindVariables(VariableBinding { variable, value -> viewDataBinding.setVariable(variable, value) }, position, dataAt)
