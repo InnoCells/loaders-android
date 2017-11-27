@@ -45,7 +45,12 @@ class RequestState<T> {
                             @Override
                             public void onCompleted() {
                                 int remaining = counter.get();
-                                if (remaining != 0) {
+                                if (remaining < 0) {
+                                    mError.compareAndSet(null,
+                                                         new IllegalArgumentException(
+                                                                 "Given page observable produced " + (-1 * remaining) + " extra items, only " + pageSize + "expected"));
+                                } else if (remaining > 0) {
+                                    // Ok, source ended because we have fewer elements!
                                     mCompleted.compareAndSet(false, true);
                                 }
                             }
