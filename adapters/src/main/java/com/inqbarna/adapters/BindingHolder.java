@@ -78,9 +78,8 @@ public class BindingHolder extends RecyclerView.ViewHolder implements GroupIndic
         }
 
         @Override
-        public BindingHolder unlockVars() {
+        public void unlockVars() {
             mHolder.mDataBinding.executePendingBindings();
-            return mHolder;
         }
     }
 }

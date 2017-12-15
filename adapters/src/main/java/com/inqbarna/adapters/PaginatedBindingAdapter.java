@@ -65,6 +65,8 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
         return getDelegate().getLastItemPosition();
     }
 
+
+
     @Override
     public void onAttachedToRecyclerView(RecyclerView recyclerView) {
         getDelegate().onAttachedToRecyclerView(recyclerView);

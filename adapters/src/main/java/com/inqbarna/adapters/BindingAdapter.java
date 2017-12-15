@@ -1,5 +1,6 @@
 package com.inqbarna.adapters;
 
+import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.GridLayoutManager;
@@ -14,11 +15,14 @@ import com.google.common.collect.RangeMap;
 
 import java.util.Map;
 
+import timber.log.Timber;
+
 /**
  * @author David García <david.garcia@inqbarna.com>
  * @version 1.0 6/9/16
  */
 public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder> {
+    private static final boolean DEBUG = false;
     private final BindingAdapterDelegate mAdapterDelegate;
     private final RecyclerView.AdapterDataObserver mGroupingResetObserver = new RecyclerView.AdapterDataObserver() {
         @Override
@@ -77,7 +81,15 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
 
     @Override
     public BindingHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        return mAdapterDelegate.onCreateViewHolder(parent, viewType);
+        final BindingHolder bindingHolder = mAdapterDelegate.onCreateViewHolder(parent, viewType);
+        if (DEBUG) {
+            Timber.d("Creating holder [%s] of type: 0x%s", getHolderId(bindingHolder), Integer.toHexString(viewType));
+        }
+        return bindingHolder;
+    }
+
+    private String getHolderId(@NonNull BindingHolder holder) {
+        return "0x" + Integer.toHexString(holder.hashCode());
     }
 
     public void setOverrideComponent(android.databinding.DataBindingComponent overrideComponent) {
@@ -86,6 +98,9 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
 
     @Override
     public void onBindViewHolder(BindingHolder holder, int position) {
+        if (DEBUG) {
+            Timber.d("Binding holder [%s] at pos: %d [Layout pos: %d]", getHolderId(holder), position, holder.getLayoutPosition());
+        }
         TypeMarker dataAt = getDataAt(position);
         mAdapterDelegate.onBindViewHolder(holder, position, dataAt);
         if (dataAt instanceof GroupIndicator) {
@@ -118,6 +133,20 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
                 holder.setEnabled(false);
                 holderAttrs.reset();
             }
+        }
+        onHolderJustBound(holder);
+    }
+
+    protected void onHolderJustBound(BindingHolder holder) {
+        /* no-op. Override if needed */
+    }
+
+    @Override
+    @CallSuper
+    public void onViewRecycled(BindingHolder holder) {
+        super.onViewRecycled(holder);
+        if (DEBUG) {
+            Timber.d("Holder recycled [%s] at pos pos: %d [Layout pos: %d]", getHolderId(holder), holder.getAdapterPosition(), holder.getLayoutPosition());
         }
     }
 

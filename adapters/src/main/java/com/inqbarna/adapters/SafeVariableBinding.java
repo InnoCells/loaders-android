@@ -6,5 +6,5 @@ package com.inqbarna.adapters;
  */
 
 interface SafeVariableBinding extends VariableBinding {
-    BindingHolder unlockVars();
+    void unlockVars();
 }

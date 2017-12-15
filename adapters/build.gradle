@@ -1,4 +1,6 @@
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -28,16 +30,17 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-	compile project(':common')
-    compile project(':rxutil')
-    compile (group: 'com.google.guava', name: 'guava', version: '22.0-android') {
-        exclude group: 'com.google.code.findbugs'
-    }
-    provided "com.jakewharton.timber:timber:4.5.1"
-    compile "com.android.support:support-v4:${rootProject.ext.supportLibsVersion}"
-    compile "com.android.support:recyclerview-v7:${rootProject.ext.supportLibsVersion}"
-    compile (group: 'com.google.guava', name: 'guava', version: '22.0-android') {
-        exclude group: 'com.google.code.findbugs'
-    }
+	api project(':common')
+    api project(':rxutil')
+    api (group: 'com.google.guava', name: 'guava', version: '22.0-android')
+    api group: 'com.google.code.findbugs', name: 'jsr305', version: '2.0.1'
+
+    kapt "com.android.databinding:compiler:$plugin_version"
+    // Android databinding
+    kapt "com.android.databinding:compiler:$plugin_version"
+
+    compileOnly "com.jakewharton.timber:timber:${timberVersion}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    implementation "com.android.support:support-v4:${supportLibsVersion}"
+    implementation "com.android.support:recyclerview-v7:${supportLibsVersion}"
 }
