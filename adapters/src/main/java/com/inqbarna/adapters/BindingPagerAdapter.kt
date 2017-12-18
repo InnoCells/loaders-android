@@ -76,7 +76,7 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
 
     override final fun isViewFromObject(view : View?, `object` : Any?) : Boolean = helper.isViewFromObject(view, `object`)
 
-    override final fun instantiateItem(container : ViewGroup?, position : Int) : Any {
+    override fun instantiateItem(container : ViewGroup?, position : Int) : Any {
         val dataAt = getDataAt(position)
         val instantiateItem = helper.instantiateItem(container, position, dataAt)
         onItemBound(dataAt)
