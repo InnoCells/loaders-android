@@ -3,10 +3,10 @@ package com.inqbarna.adapters;
 import android.support.annotation.NonNull;
 
 import com.google.common.base.Equivalence;
+import com.google.common.collect.BiMap;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
 
 import timber.log.Timber;
 
@@ -61,25 +59,21 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
     public void updateItems(@NonNull List<? extends T> items) {
 
-        final Set<Equivalence.Wrapper<? super T>> originalItemSet = toSet(mData);
-        final Set<Equivalence.Wrapper<? super T>> newItemsSet = toSet(items);
-
-
-
-        final SortedMap<Integer, T> originalItems = indexItems(mData);
-        final SortedMap<Integer, T> newItems = indexItems(items);
-        final MapDifference<Integer, T> difference = Maps.difference(originalItems, newItems, equivalence);
-        if (difference.areEqual()) {
-            return;
-        }
-
         final DiscreteDomain<Integer> domain = DiscreteDomain.integers();
-        final Map<Integer, MapDifference.ValueDifference<T>> differing = difference.entriesDiffering();
-        final Map<Integer, T> leftOnly = difference.entriesOnlyOnLeft();
-        final Map<Integer, T> rightOnly = difference.entriesOnlyOnRight();
+
+
+        final BiMap<Integer, Equivalence.Wrapper<? super T>> originalItems = indexItems(mData);
+        final BiMap<Integer, Equivalence.Wrapper<? super T>> newItems = indexItems(items);
+        final BiMap<Equivalence.Wrapper<? super T>, Integer> inversedOrginals = originalItems.inverse();
+        final BiMap<Equivalence.Wrapper<? super T>, Integer> inversedNewItems = newItems.inverse();
+
+        final MapDifference<Equivalence.Wrapper<? super T>, Integer> difference = Maps.difference(inversedOrginals, inversedNewItems);
+
+        final Map<Equivalence.Wrapper<? super T>, MapDifference.ValueDifference<Integer>> differing = difference.entriesDiffering();
+        final Map<Equivalence.Wrapper<? super T>, Integer> leftOnly = difference.entriesOnlyOnLeft();
+        final Map<Equivalence.Wrapper<? super T>, Integer> rightOnly = difference.entriesOnlyOnRight();
 
         final RangeSet<Integer> removedIndexes = keyRanges(leftOnly, domain);
-        final RangeSet<Integer> differingIndexes = keyRanges(differing, domain);
         final RangeSet<Integer> addedIndexes = keyRanges(rightOnly, domain);
 
         for (T anItem : mData) {
@@ -95,31 +89,25 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
             notifyItemRangeRemoved(addOffsets(indexes.first()), indexes.size());
         }
 
-        for (Range<Integer> changed : differingIndexes.asRanges()) {
-            final ContiguousSet<Integer> indexes = ContiguousSet.create(changed, domain);
-            Timber.d("Indexes changed: " + indexes);
-            notifyItemRangeRemoved(addOffsets(indexes.first()), indexes.size());
-        }
-
         for (Range<Integer> added : addedIndexes.asRanges()) {
             final ContiguousSet<Integer> indexes = ContiguousSet.create(added, domain);
             Timber.d("Indexes added: " + indexes);
             notifyItemRangeInserted(addOffsets(indexes.first()), indexes.size());
         }
-    }
 
-    protected Set<Equivalence.Wrapper<? super T>> toSet(@NonNull List<? extends T> data) {
-        final ImmutableSet.Builder<Equivalence.Wrapper<? super T>> builder = ImmutableSet.builder();
-        for (T item : data) {
-            builder.add(equivalence.wrap(item));
+        /*
+        // for now assume just remove or add
+        for (MapDifference.ValueDifference<Integer> changed : differing.values()) {
+            Timber.d("Item moved: %d --> %d", changed.leftValue(), changed.rightValue());
+            notifyItemMoved(addOffsets(changed.leftValue()), addOffsets(changed.rightValue()));
         }
-        return builder.build();
+        */
     }
 
     @NonNull
-    private RangeSet<Integer> keyRanges(Map<Integer, ?> map, DiscreteDomain<Integer> domain) {
+    private RangeSet<Integer> keyRanges(Map<?, Integer> map, DiscreteDomain<Integer> domain) {
         final RangeSet<Integer> indexes = TreeRangeSet.create();
-        for (Integer key : map.keySet()) {
+        for (Integer key : map.values()) {
             indexes.add(Range.singleton(key).canonical(domain));
         }
         return indexes;
@@ -133,11 +121,11 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         return absPos;
     }
 
-    protected SortedMap<Integer, T> indexItems(@NonNull List<? extends T> data) {
-        final ImmutableSortedMap.Builder<Integer, T> builder = ImmutableSortedMap.naturalOrder();
+    private BiMap<Integer, Equivalence.Wrapper<? super T>> indexItems(@NonNull List<? extends T> data) {
+        final ImmutableBiMap.Builder<Integer, Equivalence.Wrapper<? super T>> builder = ImmutableBiMap.builder();
         final ListIterator<? extends T> listIterator = data.listIterator();
         while (listIterator.hasNext()) {
-            builder.put(listIterator.nextIndex(), listIterator.next());
+            builder.put(listIterator.nextIndex(), equivalence.wrap(listIterator.next()));
         }
         return builder.build();
     }
