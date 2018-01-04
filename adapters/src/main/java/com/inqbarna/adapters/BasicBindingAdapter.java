@@ -1,23 +1,19 @@
 package com.inqbarna.adapters;
 
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.annotation.NonNull;
+import android.support.v7.util.DiffUtil;
+import android.support.v7.util.ListUpdateCallback;
 
-import com.google.common.base.Equivalence;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.ContiguousSet;
-import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.MapDifference;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Range;
-import com.google.common.collect.RangeSet;
-import com.google.common.collect.TreeRangeSet;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 import com.inqbarna.common.AdapterSyncList;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
 
 import timber.log.Timber;
 
@@ -28,8 +24,26 @@ import timber.log.Timber;
 
 public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     public static final int INVALID_IDX = -1;
-    private List<T> mData;
-    private Equivalence<? super T> equivalence;
+
+    @NonNull
+    public static <T> DiffCallback<T> identityDiff() {
+        return new DiffCallback<T>() {
+            @Override
+            public boolean areSameEntity(T a, T b) {
+                return a == b;
+            }
+
+            @Override
+            public boolean areContentEquals(T a, T b) {
+                return a == b;
+            }
+        };
+    }
+
+    private static final UpdatesHandler MAIN_THREAD_HANDLER = new UpdatesHandler(Looper.getMainLooper());
+
+    private List<T>                 mData;
+    private DiffCallback<? super T> diffCallback;
 
     protected BasicBindingAdapter() {
         this(null);
@@ -38,11 +52,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     public BasicBindingAdapter(ItemBinder binder) {
         setItemBinder(binder);
         mData = new ArrayList<>();
-        equivalence = Equivalence.identity();
-    }
-
-    public void setEquivalence(Equivalence<? super T> equivalence) {
-        this.equivalence = equivalence;
+        diffCallback = identityDiff();
     }
 
     public void setItems(List<? extends T> items) {
@@ -57,60 +67,113 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         notifyDataSetChanged();
     }
 
+    public void setDiffCallback(DiffCallback<? super T> diffCallback) {
+        this.diffCallback = diffCallback;
+    }
+
     public void updateItems(@NonNull List<? extends T> items) {
+        new Updater<>(this, items).startProcess();
+    }
 
-        final DiscreteDomain<Integer> domain = DiscreteDomain.integers();
-
-
-        final BiMap<Integer, Equivalence.Wrapper<? super T>> originalItems = indexItems(mData);
-        final BiMap<Integer, Equivalence.Wrapper<? super T>> newItems = indexItems(items);
-        final BiMap<Equivalence.Wrapper<? super T>, Integer> inversedOrginals = originalItems.inverse();
-        final BiMap<Equivalence.Wrapper<? super T>, Integer> inversedNewItems = newItems.inverse();
-
-        final MapDifference<Equivalence.Wrapper<? super T>, Integer> difference = Maps.difference(inversedOrginals, inversedNewItems);
-
-        final Map<Equivalence.Wrapper<? super T>, MapDifference.ValueDifference<Integer>> differing = difference.entriesDiffering();
-        final Map<Equivalence.Wrapper<? super T>, Integer> leftOnly = difference.entriesOnlyOnLeft();
-        final Map<Equivalence.Wrapper<? super T>, Integer> rightOnly = difference.entriesOnlyOnRight();
-
-        final RangeSet<Integer> removedIndexes = keyRanges(leftOnly, domain);
-        final RangeSet<Integer> addedIndexes = keyRanges(rightOnly, domain);
-
-        for (T anItem : mData) {
-            onRemovingElement(anItem);
+    private void onUpdateFinished(@NonNull DiffUtil.DiffResult diffResult, @NonNull List<? extends T> targetList) {
+        for (T item : mData) {
+            onRemovingElement(item);
         }
 
         mData.clear();
-        mData.addAll(items);
+        mData.addAll(targetList);
+        diffResult.dispatchUpdatesTo(new ListUpdateCallback() {
+            @Override
+            public void onInserted(int position, int count) {
+                Timber.d("%d Items inserted at %d", count, position);
+                notifyItemRangeInserted(addOffsets(position), count);
+            }
 
-        for (Range<Integer> removed : removedIndexes.asRanges()) {
-            final ContiguousSet<Integer> indexes = ContiguousSet.create(removed, domain);
-            Timber.d("Indexes removed: " + indexes);
-            notifyItemRangeRemoved(addOffsets(indexes.first()), indexes.size());
-        }
+            @Override
+            public void onRemoved(int position, int count) {
+                Timber.d("%d Items removed from pos %d", count, position);
+                notifyItemRangeRemoved(addOffsets(position), count);
+            }
 
-        for (Range<Integer> added : addedIndexes.asRanges()) {
-            final ContiguousSet<Integer> indexes = ContiguousSet.create(added, domain);
-            Timber.d("Indexes added: " + indexes);
-            notifyItemRangeInserted(addOffsets(indexes.first()), indexes.size());
-        }
+            @Override
+            public void onMoved(int fromPosition, int toPosition) {
+                Timber.d("Item moved %d --> %d", fromPosition, toPosition);
+                notifyItemMoved(addOffsets(fromPosition), addOffsets(toPosition));
+            }
 
-        /*
-        // for now assume just remove or add
-        for (MapDifference.ValueDifference<Integer> changed : differing.values()) {
-            Timber.d("Item moved: %d --> %d", changed.leftValue(), changed.rightValue());
-            notifyItemMoved(addOffsets(changed.leftValue()), addOffsets(changed.rightValue()));
-        }
-        */
+            @Override
+            public void onChanged(int position, int count, Object payload) {
+                Timber.d("%d items changed at position %d", count, position);
+                notifyItemRangeChanged(addOffsets(position), count, payload);
+            }
+        });
     }
 
-    @NonNull
-    private RangeSet<Integer> keyRanges(Map<?, Integer> map, DiscreteDomain<Integer> domain) {
-        final RangeSet<Integer> indexes = TreeRangeSet.create();
-        for (Integer key : map.values()) {
-            indexes.add(Range.singleton(key).canonical(domain));
+    private static class Updater<K extends TypeMarker> extends DiffUtil.Callback implements Runnable {
+
+        private final List<? extends K>      targetList;
+        private final BasicBindingAdapter<K> adapter;
+        private final List<K> srcList;
+        private final DiffCallback<? super K> diffCallback;
+        private DiffUtil.DiffResult diffResult;
+
+        public Updater(@NonNull BasicBindingAdapter<K> adapter, @NonNull List<? extends K> targetList) {
+            this.targetList = Preconditions.checkNotNull(targetList, "target list needs to be not null");
+            this.adapter = Preconditions.checkNotNull(adapter, "adapter may not be null");
+            srcList = adapter.mData;
+            diffCallback = adapter.diffCallback;
         }
-        return indexes;
+
+        @Override
+        public int getOldListSize() {
+            return srcList.size();
+        }
+
+        @Override
+        public int getNewListSize() {
+            return targetList.size();
+        }
+
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            final K first = Preconditions.checkNotNull(srcList.get(oldItemPosition), "First element is null, comparing positions " + oldItemPosition + " to " + newItemPosition + " on " + this);
+            final K second = Preconditions.checkNotNull(targetList.get(newItemPosition), "Second element is null, comparing positions " + oldItemPosition + " to " + newItemPosition + " on " + this);
+            return diffCallback.areSameEntity(first, second);
+        }
+
+        @Override
+        public String toString() {
+            final MoreObjects.ToStringHelper stringHelper = MoreObjects.toStringHelper(this);
+            stringHelper.add("SrcSize", srcList.size())
+                        .add("DstSize", targetList.size());
+
+            return stringHelper.toString();
+        }
+
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            final K first = Preconditions.checkNotNull(srcList.get(oldItemPosition), "First element is null, comparing contents " + oldItemPosition + " to " + newItemPosition + " on " + this);
+            final K second = Preconditions.checkNotNull(targetList.get(newItemPosition), "Second element is null, comparing contents " + oldItemPosition + " to " + newItemPosition + " on " + this);
+            return diffCallback.areContentEquals(first, second);
+        }
+
+        void startProcess() {
+            AsyncTask.THREAD_POOL_EXECUTOR.execute(this);
+        }
+
+        @Override
+        public void run() {
+            diffResult = DiffUtil.calculateDiff(this);
+            BasicBindingAdapter.MAIN_THREAD_HANDLER.obtainMessage(UpdatesHandler.RESULTS_FINISHED, this).sendToTarget();
+        }
+
+        public void apply() {
+            if (null != diffResult) {
+                adapter.onUpdateFinished(diffResult, targetList);
+            } else {
+                Timber.e("Some unknown error happened while processing");
+            }
+        }
     }
 
     protected int addOffsets(int relativePos) {
@@ -119,15 +182,6 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
     protected int removeOffsets(int absPos) {
         return absPos;
-    }
-
-    private BiMap<Integer, Equivalence.Wrapper<? super T>> indexItems(@NonNull List<? extends T> data) {
-        final ImmutableBiMap.Builder<Integer, Equivalence.Wrapper<? super T>> builder = ImmutableBiMap.builder();
-        final ListIterator<? extends T> listIterator = data.listIterator();
-        while (listIterator.hasNext()) {
-            builder.put(listIterator.nextIndex(), equivalence.wrap(listIterator.next()));
-        }
-        return builder.build();
     }
 
     protected void onRemovingElement(T item) {
@@ -191,6 +245,28 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         public void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos) {
             variableBinding.bindValue(mModelVar, dataAtPos);
             variableBinding.bindValue(mHandlerVar, mHandler);
+        }
+    }
+
+    public interface DiffCallback<T> {
+        boolean areSameEntity(T a, T b);
+        boolean areContentEquals(T a, T b);
+    }
+
+    private static class UpdatesHandler extends Handler {
+        static final int RESULTS_FINISHED = 1;
+        public UpdatesHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case RESULTS_FINISHED:
+                    Updater updater = (Updater) msg.obj;
+                    updater.apply();
+                    break;
+            }
         }
     }
 
