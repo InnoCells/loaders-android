@@ -16,7 +16,8 @@ import kotlin.properties.Delegates
  */
 
 open class BasicPagerAdapter<T : TypeMarker> @JvmOverloads constructor(varId : Int, items : List<T> = emptyList(), bindingComponent : DataBindingComponent?
- = null) : BindingPagerAdapter<T>(varId, bindingComponent) {
+= null) : BindingPagerAdapter<T>(varId, bindingComponent) {
+
     var items : List<T> by Delegates.observable(items) { _, _, _ -> notifyDataSetChanged() }
 
     fun <D> setData(items : Iterable<D>, conv : (D) -> T) {
@@ -65,7 +66,7 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
         helper.bindingComponent = bindingComponent
     }
 
-    final override fun getItemPosition(`object` : Any?) : Int {
+    final override fun getItemPosition(`object`: Any): Int {
         val viewDataBinding = `object` as? ViewDataBinding
         return getPositionOf(viewDataBinding.recoverData())
     }
@@ -74,9 +75,9 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
         return PagerAdapter.POSITION_NONE
     }
 
-    override final fun isViewFromObject(view : View?, `object` : Any?) : Boolean = helper.isViewFromObject(view, `object`)
+    override fun isViewFromObject(view: View, `object`: Any): Boolean = helper.isViewFromObject(view, `object`)
 
-    override fun instantiateItem(container : ViewGroup?, position : Int) : Any {
+    override fun instantiateItem(container: ViewGroup, position: Int): Any {
         val dataAt = getDataAt(position)
         val instantiateItem = helper.instantiateItem(container, position, dataAt)
         onItemBound(dataAt)
@@ -88,7 +89,7 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
     abstract fun onBindingDestroyed(destroyedBinding : ViewDataBinding)
 
 
-    override final fun destroyItem(container : ViewGroup?, position : Int, `object` : Any?) {
+    override final fun destroyItem(container: ViewGroup, position: Int, `object`: Any) {
         helper.destroyItem(container, `object`)?.let { onBindingDestroyed(it) }
     }
 
