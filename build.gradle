@@ -23,6 +23,7 @@ ext {
     rxJavaVersion = "1.2.7"
     googlePlayVersion = "10.2.1"
     daggerVersion = "2.9"
+    rxJava2Version = "2.1.6"
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
