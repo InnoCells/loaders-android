@@ -70,13 +70,13 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
         return getPositionOf(viewDataBinding.recoverData())
     }
 
-    open protected fun getPositionOf(data : T?) : Int {
+    protected open fun getPositionOf(data : T?) : Int {
         return PagerAdapter.POSITION_NONE
     }
 
-    override final fun isViewFromObject(view : View?, `object` : Any?) : Boolean = helper.isViewFromObject(view, `object`)
+    final override fun isViewFromObject(view : View?, `object` : Any?) : Boolean = helper.isViewFromObject(view, `object`)
 
-    override final fun instantiateItem(container : ViewGroup?, position : Int) : Any {
+    final override fun instantiateItem(container : ViewGroup?, position : Int) : Any {
         val dataAt = getDataAt(position)
         val instantiateItem = helper.instantiateItem(container, position, dataAt)
         onItemBound(dataAt)
@@ -88,7 +88,7 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
     abstract fun onBindingDestroyed(destroyedBinding : ViewDataBinding)
 
 
-    override final fun destroyItem(container : ViewGroup?, position : Int, `object` : Any?) {
+    final override fun destroyItem(container : ViewGroup?, position : Int, `object` : Any?) {
         helper.destroyItem(container, `object`)?.let { onBindingDestroyed(it) }
     }
 
@@ -105,7 +105,7 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
 
 internal class PagerAdapterHelper(var bindingComponent : DataBindingComponent? = null) {
     internal lateinit var binder : ItemBinder
-    fun isViewFromObject(view : View?, any : Any?) : Boolean = if (any is ViewDataBinding) any == DataBindingUtil.getBinding(view) else false
+    fun isViewFromObject(view : View?, any : Any?) : Boolean = view?.let { if (any is ViewDataBinding) any == DataBindingUtil.getBinding(view) else false } ?: false
 
     fun instantiateItem(container : ViewGroup?, position : Int, dataAt : TypeMarker) : ViewDataBinding {
         val viewDataBinding = DataBindingUtil.inflate<ViewDataBinding>(LayoutInflater.from(container!!.context), dataAt.itemType, container, true, bindingComponent)
