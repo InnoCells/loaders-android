@@ -225,8 +225,8 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
         public void apply() {
             if (null != diffResult) {
-                adapter.onUpdateFinished(diffResult, targetList);
                 if (!mDisposable.isDisposed()) {
+                    adapter.onUpdateFinished(diffResult, targetList);
                     mObserver.onSuccess(adapter.mData);
                 }
             } else {
