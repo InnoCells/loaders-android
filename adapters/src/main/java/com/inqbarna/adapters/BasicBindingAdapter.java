@@ -1,6 +1,5 @@
 package com.inqbarna.adapters;
 
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -11,6 +10,8 @@ import android.support.v7.util.ListUpdateCallback;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ObjectArrays;
 import com.inqbarna.common.AdapterSyncList;
 
 import java.util.ArrayList;
@@ -18,11 +19,16 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.disposables.Disposables;
+import io.reactivex.internal.disposables.DisposableHelper;
 import timber.log.Timber;
 
 /**
@@ -49,9 +55,11 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     }
 
     private static final UpdatesHandler MAIN_THREAD_HANDLER = new UpdatesHandler(Looper.getMainLooper());
+    private static final Executor OFF_THREAD_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private List<T>                 mData;
     private DiffCallback<? super T> diffCallback;
+    private final AtomicReference<Disposable> updateTask;
 
     protected BasicBindingAdapter() {
         this(null);
@@ -61,6 +69,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         setItemBinder(binder);
         mData = new ArrayList<>();
         diffCallback = identityDiff();
+        updateTask = new AtomicReference<>();
     }
 
     public void setItems(List<? extends T> items) {
@@ -71,8 +80,14 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         if (null != items) {
             mData.addAll(items);
         }
-        Timber.d("[SET ITEMS] Notify dataSetChanged");
+        printDbg("[SET ITEMS] Notify dataSetChanged");
         notifyDataSetChanged();
+    }
+
+    private final void printDbg(String fmt, Object... args) {
+        if (DEBUG) {
+            Timber.d(fmt, args);
+        }
     }
 
     public void setDiffCallback(DiffCallback<? super T> diffCallback) {
@@ -87,14 +102,14 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         diffResult.dispatchUpdatesTo(new ListUpdateCallback() {
             @Override
             public void onInserted(int position, int count) {
-                Timber.d("%d Items inserted at %d", count, position);
+                printDbg("%d Items inserted at %d", count, position);
                 mData.addAll(position, targetList.subList(position, position + count));
                 notifyItemRangeInserted(addOffsets(position), count);
             }
 
             @Override
             public void onRemoved(int position, int count) {
-                Timber.d("%d Items removed from pos %d", count, position);
+                printDbg("%d Items removed from pos %d", count, position);
                 final List<T> toRemove = mData.subList(position, position + count);
                 for (T item : toRemove) {
                     onRemovingElement(item);
@@ -105,7 +120,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
             @Override
             public void onMoved(int fromPosition, int toPosition) {
-                Timber.d("Item moved %d --> %d", fromPosition, toPosition);
+                printDbg("Item moved %d --> %d", fromPosition, toPosition);
                 final T item = mData.remove(fromPosition);
                 mData.add(toPosition, item);
                 notifyItemMoved(addOffsets(fromPosition), addOffsets(toPosition));
@@ -113,7 +128,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
             @Override
             public void onChanged(int position, int count, Object payload) {
-                Timber.d("%d items changed at position %d", count, position);
+                printDbg("%d items changed at position %d", count, position);
 
                 if (null != payload) {
                     List<? extends T> data;
@@ -151,6 +166,10 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         private final DiffCallback<? super K> diffCallback;
         private DiffUtil.DiffResult diffResult;
         private Disposable mDisposable;
+
+        private static final AtomicInteger DBG_COUNTER = new AtomicInteger(0);
+
+        private final String debugName;
 
         private final DiffUtil.Callback _Callback = new DiffUtil.Callback() {
             @Override
@@ -190,15 +209,34 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         private SingleObserver<? super List<? extends K>> mObserver;
 
         public Updater(@NonNull BasicBindingAdapter<K> adapter, @NonNull List<? extends K> targetList) {
-            this.targetList = Preconditions.checkNotNull(targetList, "target list needs to be not null");
+            debugName = "Updater-" + DBG_COUNTER.getAndIncrement();
+            this.targetList = ImmutableList.copyOf(Preconditions.checkNotNull(targetList, "target list needs to be not null"));
             this.adapter = Preconditions.checkNotNull(adapter, "adapter may not be null");
-            srcList = adapter.mData;
+            srcList = ImmutableList.copyOf(adapter.mData);
             diffCallback = adapter.diffCallback;
+
+            debugMessage("Created (%s)", this);
+        }
+
+        protected void debugMessage(String format, Object ...args) {
+            if (!DEBUG) {
+                return;
+            }
+
+            Object []newArgs;
+            if (args == null) {
+                newArgs = new Object[]{debugName};
+            } else {
+                newArgs = ObjectArrays.concat(debugName, args);
+            }
+
+            Timber.d("[%s] " + format, newArgs);
         }
 
         @Override
         protected void subscribeActual(SingleObserver<? super List<? extends K>> observer) {
             mDisposable = Disposables.empty();
+            DisposableHelper.set(adapter.updateTask, mDisposable);
             this.mObserver = observer;
             this.mObserver.onSubscribe(mDisposable);
             startProcess();
@@ -214,23 +252,58 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         }
 
         private void startProcess() {
-            AsyncTask.THREAD_POOL_EXECUTOR.execute(this);
+            if (!mDisposable.isDisposed()) {
+                debugMessage("scheduling process");
+                OFF_THREAD_EXECUTOR.execute(this);
+            } else {
+                debugMessage("Job cancelled before starting it!");
+            }
         }
 
         @Override
         public void run() {
+            if (mDisposable.isDisposed()) {
+                debugMessage("Aborting before start computation");
+                return;
+            }
+            debugMessage("Computing...");
             diffResult = DiffUtil.calculateDiff(_Callback);
+            if (mDisposable.isDisposed()) {
+                debugMessage("Aborting right after computation, results discarded");
+                return;
+            }
+            debugMessage("Finished with result: %s", diffResult);
             BasicBindingAdapter.MAIN_THREAD_HANDLER.obtainMessage(UpdatesHandler.RESULTS_FINISHED, this).sendToTarget();
         }
 
         public void apply() {
             if (null != diffResult) {
+                debugMessage("================== START Applying results ==============");
                 if (!mDisposable.isDisposed()) {
+                    dbgPrintList(adapter.mData, "Items in original list", "-");
+                    dbgPrintList(targetList, "Items in desired list", "+");
                     adapter.onUpdateFinished(diffResult, targetList);
+                    dbgPrintList(targetList, "Items in resulting list", "==>");
+                    assert targetList.size() == adapter.mData.size();
                     mObserver.onSuccess(adapter.mData);
+                } else {
+                    debugMessage("Skip, target disposed!!");
                 }
+                debugMessage("================== DONE Applying results ==============");
             } else {
                 Timber.e("Some unknown error happened while processing");
+                if (!mDisposable.isDisposed()) {
+                    mObserver.onError(new IllegalStateException("No diff could be computed"));
+
+                }
+            }
+        }
+
+        protected void dbgPrintList(List<? extends K> list, String title, String symbol) {
+            int originalSize = list.size();
+            debugMessage("%s: %d", title, originalSize);
+            for (int i = 0; i < originalSize; i++) {
+                debugMessage(" %s %d: %s", symbol, i, list.get(i));
             }
         }
     }
