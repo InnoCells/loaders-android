@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -147,6 +148,22 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
         for (T in : depthIterationOverChilds(node)) {
             apply.apply(in);
         }
+    }
+
+    protected final Iterable<TreeNode<T>> breadthFirstIterator(@Nullable TreeNode<T> node) {
+        TreeNodeImpl<T> root;
+        if (null == node) {
+            root = ROOT;
+        } else if (!(node instanceof TreeNodeImpl)) {
+            return ImmutableList.of();
+        } else {
+            root = (TreeNodeImpl<T>) node;
+        }
+
+        return new Traverser()
+                .breadthFirstTraversal(root)
+                .filter(itm -> itm != ROOT)
+                .transform(itm -> (TreeNode<T>) itm);
     }
 
     private class Traverser extends TreeTraverser<TreeNodeImpl<T>> {
