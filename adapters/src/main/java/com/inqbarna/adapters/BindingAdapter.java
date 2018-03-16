@@ -256,7 +256,7 @@ public abstract class BindingAdapter extends RecyclerView.Adapter<BindingHolder>
         return builder.build();
     }
 
-    protected abstract TypeMarker getDataAt(int position);
+    public abstract TypeMarker getDataAt(int position);
 
     @Override
     public int getItemViewType(int position) {

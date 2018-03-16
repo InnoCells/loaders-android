@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -61,7 +60,7 @@ public class TreeBindingAdapter<T extends NestableMarker<T>> extends BindingAdap
     }
 
     @Override
-    protected TypeMarker getDataAt(int position) {
+    public TypeMarker getDataAt(int position) {
         return mFlattened.get(position).data;
     }
 

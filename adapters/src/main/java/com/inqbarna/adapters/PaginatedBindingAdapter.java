@@ -32,7 +32,7 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
     }
 
     @Override
-    protected T getDataAt(int position) {
+    public T getDataAt(int position) {
         return getDelegate().getItem(position);
     }
 
