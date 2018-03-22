@@ -12,6 +12,9 @@ import io.reactivex.schedulers.Schedulers
 import org.reactivestreams.Publisher
 import java.util.*
 import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * @author David García <david.garcia@inqbarna.com>
@@ -82,18 +85,12 @@ class RxPagingAdapterDelegate<T>(
                     val nextItem = state.blockingNext()
                     val error = state.error
                     when {
+                        null != nextItem -> emitter.onNext(nextItem)
                         null != error -> emitter.onError(error)
                         state.completed -> emitter.onComplete()
-                        else -> {
-                            if (null == nextItem) {
-                                emitter.onError(NullPointerException("Unexpected null value at this point, or complete or on error should come before this"))
-                                return@BiConsumer
-                            }
-                            emitter.onNext(nextItem)
-                        }
                     }
                 }
-        ).subscribeOn(Schedulers.computation(), false).buffer(displayPageSize).observeOn(AndroidSchedulers.mainThread(), false, 1)
+        ).subscribeOn(Schedulers.from(PAGE_PREFETCH)).buffer(displayPageSize).observeOn(AndroidSchedulers.mainThread(), false, 1)
     }
 
     private fun setDataStream(stream: Flowable<out List<T>>, endLoad: Boolean) {
@@ -110,5 +107,13 @@ class RxPagingAdapterDelegate<T>(
 
     fun setDataFactory(factory: PageFactory<T>, pageSize: Int) {
         setDataFactory(factory, pageSize, pageSize)
+    }
+
+    companion object {
+        private val counter: AtomicInteger = AtomicInteger(0)
+        private val PAGE_PREFETCH: ExecutorService = Executors.newCachedThreadPool { Thread(it, nextName()) }
+        private fun nextName(): String {
+            return "PagePrefetcher-${counter.getAndIncrement()}"
+        }
     }
 }

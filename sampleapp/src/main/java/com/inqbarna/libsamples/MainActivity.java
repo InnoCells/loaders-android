@@ -1,5 +1,6 @@
 package com.inqbarna.libsamples;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,17 +14,24 @@ import com.inqbarna.adapters.RxPaginatedBindingAdapter;
 import com.inqbarna.adapters.TypeMarker;
 import com.inqbarna.adapters.VariableBinding;
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
+import com.inqbarna.rxutil.paging.PageFactories;
 import com.inqbarna.rxutil.paging.PageFactory;
 import com.inqbarna.rxutil.paging.RxPagingCallback;
 import com.inqbarna.rxutil.paging.RxPagingConfig;
 
-import java.util.concurrent.TimeUnit;
+import org.jetbrains.annotations.NotNull;
+import org.reactivestreams.Publisher;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import hu.akarnokd.rxjava.interop.RxJavaInterop;
+import io.reactivex.Flowable;
+import io.reactivex.schedulers.Schedulers;
 import rx.Observable;
-import rx.functions.Func1;
-import rx.schedulers.Schedulers;
+import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,12 +48,13 @@ public class MainActivity extends AppCompatActivity {
     private RxPagingCallback mPagingCallback = new RxPagingCallback() {
         @Override
         public void onError(Throwable throwable) {
+            Timber.e(throwable, "Error con las páginas!!");
             Toast.makeText(MainActivity.this, "Error detectado", Toast.LENGTH_LONG).show();
         }
 
         @Override
         public void onCompleted() {
-
+            Timber.d("Paginación completada!");
         }
     };
 
@@ -53,17 +62,12 @@ public class MainActivity extends AppCompatActivity {
     private PaginatedAdapterDelegate.ProgressHintListener mProgressListener = new PaginatedAdapterDelegate.ProgressHintListener() {
         @Override
         public void setLoadingState(boolean loading) {
+            Timber.d("Loading state set to: %s", loading);
             progress.setVisibility(loading ? View.VISIBLE : View.GONE);
         }
     };
 
-    private ItemBinder mItemBinder = new ItemBinder() {
-
-        @Override
-        public void bindVariables(VariableBinding variableBinding, int pos, TypeMarker dataAtPos) {
-            variableBinding.bindValue(com.inqbarna.libsamples.BR.model, dataAtPos);
-        }
-    };
+    private ItemBinder mItemBinder = (variableBinding, pos, dataAtPos) -> variableBinding.bindValue(BR.model, dataAtPos);
     private RxPaginatedBindingAdapter<TestVM> mAdapter;
 
     public static class TestVM implements TypeMarker {
@@ -76,6 +80,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public int getItemType() {
             return R.layout.main_test_item;
+        }
+
+        @Override
+        public String toString() {
+            return value;
         }
     }
 
@@ -95,21 +104,37 @@ public class MainActivity extends AppCompatActivity {
         mAdapter.setDataFactory(createFactory(), 20);
     }
 
+    private List<TestVM> generateFirst(int amount) {
+        List<TestVM> result = new ArrayList<>();
+        for (int i = 0; i < amount; i++) {
+            result.add(new TestVM(i));
+        }
+        return result;
+    }
+
     private PageFactory<TestVM> createFactory() {
         return new PageFactory<TestVM>() {
+            @NotNull
             @Override
-            public Observable<? extends TestVM> nextPageObservable(int start, int size) {
-                int endElem = Math.min(start + size, 1150);
-                size = endElem - start;
-                return Observable.range(start, size).subscribeOn(Schedulers.io()).delaySubscription(10, TimeUnit.SECONDS)
-                        .map(
-                                new Func1<Integer, TestVM>() {
-                                    @Override
-                                    public TestVM call(Integer integer) {
-                                        return new TestVM(integer);
-                                    }
-                                }
-                        );
+            public List<? extends TestVM> getInitialData() {
+                return generateFirst(133);
+            }
+
+            @SuppressLint("CheckResult")
+            @NotNull
+            @Override
+            public Publisher<? extends TestVM> nextPageObservable(int startOffset, int pageSize) {
+                Timber.d("[%s] Requested page %d + %d", Thread.currentThread().getName(), startOffset, pageSize);
+                int endElem = Math.min(startOffset + pageSize, 600);
+                pageSize = endElem - startOffset;
+                Timber.d("[%s] Queueing page request %d + %d", Thread.currentThread().getName(), startOffset, pageSize);
+                final Flowable<TestVM> shared = RxJavaInterop.toV2Flowable(Observable.range(startOffset, pageSize))
+                                                             //                                                         .delaySubscription(1, TimeUnit.SECONDS)
+                                                             .subscribeOn(Schedulers.io())
+                                                             .map(TestVM::new)
+                                                             .share();
+                shared.count().subscribe(totalCount -> Timber.d("[%s] Emitted page elements: %d (@offset: %d)", Thread.currentThread().getName(), totalCount, startOffset));
+                return shared;
             }
         };
     }

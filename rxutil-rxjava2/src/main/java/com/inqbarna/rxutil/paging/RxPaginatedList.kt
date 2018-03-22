@@ -1,10 +1,8 @@
 package com.inqbarna.rxutil.paging
 
 import android.support.v7.widget.RecyclerView
-
 import com.inqbarna.common.AdapterSyncList
 import com.inqbarna.common.paging.PaginatedList
-
 import io.reactivex.Flowable
 import io.reactivex.subscribers.DisposableSubscriber
 

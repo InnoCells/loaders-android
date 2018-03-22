@@ -16,7 +16,7 @@ import kotlin.reflect.KProperty
 
 
 abstract class ListBaseActivity<T : TypeMarker> : AppCompatActivity() {
-    protected lateinit var adapter: BasicBindingAdapter<T>
+    internal lateinit var adapter: BasicBindingAdapter<T>
 
     @JvmField
     @BindView(R.id.list)
@@ -106,11 +106,8 @@ open class NumbersActivity : ListBaseActivity<NumberVM>() {
 
 open class NumberVM(val number : Int, internal val toggler: Toggler) : TypeMarker, GroupIndicator by BasicIndicatorDelegate() {
 
-    val numberStr by object : ReadOnlyProperty<NumberVM, String> {
-        override fun getValue(thisRef: NumberVM, property: KProperty<*>): String {
-            return number.toString()
-        }
-    }
+    val numberStr: String
+        get() = number.toString()
 
     override fun getItemType(): Int {
         return R.layout.number_item
