@@ -1,4 +1,6 @@
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -28,8 +30,8 @@ android {
 dependencies {
     api project(':common')
     implementation "com.android.support:recyclerview-v7:${supportLibsVersion}"
-    implementation group: 'io.reactivex', name: 'rxjava', version: rxJavaVersion
-    implementation 'io.reactivex:rxandroid:1.2.1'
+    implementation group: 'org.reactivestreams', name: 'reactive-streams', version: "1.0.2"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     androidTestImplementation("com.android.support.test.espresso:espresso-core:$espressoVersion", {
         exclude group: 'com.android.support', module: 'support-annotations'
     })

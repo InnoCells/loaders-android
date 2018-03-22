@@ -1,8 +1,10 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    ext.kotlin_version = '1.2.21'
-    ext.plugin_version = "3.1.0-beta3"
+    ext {
+        kotlin_version = '1.2.30'
+        plugin_version = '3.1.0-rc03'
+    }
     repositories {
         jcenter()
         google()
@@ -29,6 +31,7 @@ ext {
     timberVersion = "4.6.1"
     espressoVersion = "3.0.1"
     jUnitVersion = "4.12"
+    rxJava2Android = "2.0.2"
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8

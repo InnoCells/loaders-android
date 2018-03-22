@@ -1,19 +1,16 @@
 apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
-
-	dataBinding {
-		enabled true
-	}
 
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
     }
     buildTypes {
         release {
@@ -29,17 +26,14 @@ android {
 }
 
 dependencies {
-	api project(':common')
-    api project(':rxutil-rxjava2')
-    api (group: 'com.google.guava', name: 'guava', version: '22.0-android')
-    api group: 'com.google.code.findbugs', name: 'jsr305', version: '2.0.1'
-    implementation group: 'io.reactivex.rxjava2', name: 'rxjava', version: rxJava2Version
-
-    // Android databinding
-    kapt "com.android.databinding:compiler:$plugin_version"
-
-    compileOnly "com.jakewharton.timber:timber:${timberVersion}"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation "com.android.support:support-v4:${supportLibsVersion}"
+    api project(':common')
+    api project(':rxutil')
     implementation "com.android.support:recyclerview-v7:${supportLibsVersion}"
+    implementation group: 'io.reactivex', name: 'rxjava', version: rxJavaVersion
+    implementation group: 'io.reactivex', name: 'rxjava-reactive-streams', version: '1.2.1'
+    implementation 'io.reactivex:rxandroid:1.2.1'
+    androidTestImplementation("com.android.support.test.espresso:espresso-core:$espressoVersion", {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    testImplementation "junit:junit:$jUnitVersion"
 }
