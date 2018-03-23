@@ -68,7 +68,7 @@ class RxPagingAdapterDelegate<T>(
     }
 
     fun setDataFactory(factory: PageFactory<T>, displayPageSize: Int, requestPageSize: Int) {
-        setDataFactory(factory, displayPageSize, requestPageSize, false)
+        setDataFactory(factory, displayPageSize, requestPageSize, factory.initialData.isNotEmpty())
     }
 
     private fun setDataFactory(factory: PageFactory<T>, displayPageSize: Int, requestPageSize: Int, endLoad: Boolean) {
