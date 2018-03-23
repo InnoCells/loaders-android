@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import rx.Observable;
 import rx.Observer;
+import rx.RxReactiveStreams;
 
 /**
  * Created by david on 17/09/16.
@@ -16,13 +17,16 @@ class RequestState<T> {
     private AtomicBoolean mCompleted;
     private AtomicReference<Throwable> mError;
     private PageFactory<T> mFactory;
+    private final RxPagingConfig paginateConfig;
 
-    RequestState(int pageSize, PageFactory<T> mFactory) {
+    RequestState(int pageSize, PageFactory<T> mFactory, RxPagingConfig paginateConfig) {
         this.pageSize = pageSize;
         this.mFactory = mFactory;
+        this.paginateConfig = paginateConfig;
         mOffset = 0;
         mCompleted = new AtomicBoolean(false);
         mError = new AtomicReference<>(null);
+        // TODO: [DG - 22/03/2018] Maybe add error handling on RxJava1... for now only on RxJava2
     }
 
     boolean getCompleted() {
@@ -36,7 +40,7 @@ class RequestState<T> {
     Observable<? extends T> nextObservable() {
         int offset = mOffset;
         mOffset += pageSize;
-        Observable<? extends T> observable = mFactory.nextPageObservable(offset, pageSize);
+        Observable<? extends T> observable = RxReactiveStreams.toObservable(mFactory.nextPageObservable(offset, pageSize));
         final AtomicInteger counter = new AtomicInteger(pageSize);
 
         return observable

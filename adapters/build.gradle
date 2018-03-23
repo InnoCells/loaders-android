@@ -30,12 +30,11 @@ android {
 
 dependencies {
 	api project(':common')
-    api project(':rxutil')
+    api project(':rxutil-rxjava2')
     api (group: 'com.google.guava', name: 'guava', version: '22.0-android')
     api group: 'com.google.code.findbugs', name: 'jsr305', version: '2.0.1'
-    implementation group: 'io.reactivex.rxjava2', name: 'rxjava', version: rxJava2Version
+    api group: 'io.reactivex.rxjava2', name: 'rxjava', version: rxJava2Version
 
-    kapt "com.android.databinding:compiler:$plugin_version"
     // Android databinding
     kapt "com.android.databinding:compiler:$plugin_version"
 

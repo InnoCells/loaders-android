@@ -7,15 +7,17 @@ import android.support.v7.widget.RecyclerView;
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
 import com.inqbarna.common.paging.PaginatedList;
 
+import org.reactivestreams.Publisher;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import rx.Observable;
 import rx.Observer;
+import rx.RxReactiveStreams;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Func0;
 import rx.functions.Func3;
 import rx.observables.AsyncOnSubscribe;
 
@@ -73,9 +75,13 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
 
         return new PageFactory<T>() {
             @Override
-            public Observable<? extends T> nextPageObservable(int start, int size) {
-                List<T> subList = allItems.subList(start, start + Math.min(size, allItems.size()));
-                return Observable.from(subList);
+            public List<? extends T> getInitialData() {
+                return allItems;
+            }
+
+            @Override
+            public Publisher<? extends T> nextPageObservable(int start, int size) {
+                return RxReactiveStreams.toPublisher(Observable.empty());
             }
         };
     }
@@ -95,26 +101,18 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
     private Observable<List<T>> createStream(final PageFactory<T> factory, final int displayPageSize, final int requestPageSize) {
         return Observable.create(
                 AsyncOnSubscribe.createStateful(
-                        new Func0<RequestState<T>>() {
-                            @Override
-                            public RequestState<T> call() {
-                                return new RequestState<>(requestPageSize, factory);
+                        () -> new RequestState<>(requestPageSize, factory, (RxPagingConfig) getPaginateConfig()),
+                        (Func3<RequestState<T>, Long, Observer<Observable<? extends T>>, RequestState<T>>) (state, aLong, observableObserver) -> {
+                            Throwable error = state.getError();
+                            if (null != error) {
+                                observableObserver.onError(error);
+                            } else if (state.getCompleted()) {
+                                observableObserver.onCompleted();
+                            } else {
+                                Observable<? extends T> ob = state.nextObservable();
+                                observableObserver.onNext(ob);
                             }
-                        },
-                        new Func3<RequestState<T>, Long, Observer<Observable<? extends T>>, RequestState<T>>() {
-                            @Override
-                            public RequestState<T> call(RequestState<T> state, Long aLong, Observer<Observable<? extends T>> observableObserver) {
-                                Throwable error = state.getError();
-                                if (null != error) {
-                                    observableObserver.onError(error);
-                                } else if (state.getCompleted()) {
-                                    observableObserver.onCompleted();
-                                } else {
-                                    Observable<? extends T> ob = state.nextObservable();
-                                    observableObserver.onNext(ob);
-                                }
-                                return state;
-                            }
+                            return state;
                         }
                 )
         ).buffer(displayPageSize).observeOn(AndroidSchedulers.mainThread(), 1);

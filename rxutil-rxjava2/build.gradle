@@ -29,8 +29,11 @@ android {
 
 dependencies {
     api project(':common')
+    api project(':rxutil')
+    compileOnly "com.jakewharton.timber:timber:${timberVersion}"
     implementation "com.android.support:recyclerview-v7:${supportLibsVersion}"
-    implementation group: 'org.reactivestreams', name: 'reactive-streams', version: "1.0.2"
+    implementation group: 'io.reactivex.rxjava2', name: 'rxjava', version: rxJava2Version
+    implementation group: 'io.reactivex.rxjava2', name: 'rxandroid', version: rxJava2Android
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     androidTestImplementation("com.android.support.test.espresso:espresso-core:$espressoVersion", {
         exclude group: 'com.android.support', module: 'support-annotations'
