@@ -101,7 +101,7 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
     private Observable<List<T>> createStream(final PageFactory<T> factory, final int displayPageSize, final int requestPageSize) {
         return Observable.create(
                 AsyncOnSubscribe.createStateful(
-                        () -> new RequestState<>(requestPageSize, factory),
+                        () -> new RequestState<>(requestPageSize, factory, (RxPagingConfig) getPaginateConfig()),
                         (Func3<RequestState<T>, Long, Observer<Observable<? extends T>>, RequestState<T>>) (state, aLong, observableObserver) -> {
                             Throwable error = state.getError();
                             if (null != error) {

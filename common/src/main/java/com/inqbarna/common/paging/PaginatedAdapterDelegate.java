@@ -21,6 +21,7 @@ public class PaginatedAdapterDelegate<T> {
     private       int                  mMinRequestDistance;
     private       boolean              mPageRequested;
     private final PaginateConfig       mPaginateConfig;
+    private       boolean              mRecoveryInProgress;
 
 
     private RecyclerView.OnScrollListener mScrollListener = new RecyclerView.OnScrollListener() {
@@ -108,6 +109,24 @@ public class PaginatedAdapterDelegate<T> {
         mAdapter.notifyDataSetChanged();
     }
 
+    protected void disableProgressAwaitForRecovery() {
+        if (null != mProgressHintListener) {
+            mProgressHintListener.setLoadingState(false);
+        }
+        mRecoveryInProgress = true;
+    }
+
+    protected void onRecoveryInProgress(boolean recovered) {
+        mRecoveryInProgress = false;
+        if (!recovered) {
+            mPageRequested = false;
+        } else {
+            if (null != mProgressHintListener && mPageRequested) {
+                mProgressHintListener.setLoadingState(true);
+            }
+        }
+    }
+
     public void addNextPage(Collection<? extends T> pageItems, boolean lastPage) {
         if (null == mList) {
             throw new IllegalStateException("You need first to initialize the PaginatedList");
@@ -136,7 +155,7 @@ public class PaginatedAdapterDelegate<T> {
     private void innerRequestNext() {
         if (!mPageRequested && null != mList) {
             mPageRequested = true;
-            if (null != mProgressHintListener) {
+            if (null != mProgressHintListener && !mRecoveryInProgress) {
                 mProgressHintListener.setLoadingState(true);
             }
             requestNextPage();

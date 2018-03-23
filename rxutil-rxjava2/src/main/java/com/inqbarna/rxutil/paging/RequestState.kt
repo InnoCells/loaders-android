@@ -2,6 +2,7 @@ package com.inqbarna.rxutil.paging
 
 import android.annotation.SuppressLint
 import io.reactivex.Flowable
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.disposables.Disposables
 import io.reactivex.subscribers.DisposableSubscriber
@@ -16,138 +17,218 @@ import kotlin.concurrent.withLock
 private const val DEBUG: Boolean = false
 
 /**
- * Created by david on 17/09/16.
+ * @author David García (david.garcia@inqbarna.com)
+ * @version 1.0 2018-03-22
  */
-internal class RequestState<T>(val pageSize: Int, private val pageFactory: PageFactory<T>) : Disposable
+internal class RequestState<T>(val pageSize: Int, private val pageFactory: PageFactory<T>, private val rxPagingConfig: RxPagingConfig) : Disposable
 {
     private var mOffset: Int = 0
-    private var currentRequest: Disposable? = null
 
     private val unboundedQueue: Queue<T>
     private val lock: Lock = ReentrantLock()
-    private val itemsCondition: Condition = lock.newCondition()
-
-    private val delegateDisposable = Disposables.fromAction {
-        lock.withLock {
-            currentRequest?.dispose()
-            currentRequest = null
-        }
-    }
-
-    override fun isDisposed(): Boolean = delegateDisposable.isDisposed
-    override fun dispose() = delegateDisposable.dispose()
-
-    var completed: Boolean = false
+    private val stateCondition: Condition = lock.newCondition()
+    internal var state: DelegateState = None
         get() = lock.withLock { field }
-        private set(value) {
+        private set(newState) {
             lock.withLock {
-                field = value
+                val oldState = field
+                if (oldState != newState) {
+                    debug("State changed from '%s' to '%s'", oldState, newState)
+                    field = newState
+                    onStateUpdated(oldState, newState)
+                    stateCondition.signalAll()
+                }
             }
         }
 
-    var error: Throwable? = null
-        get() = lock.withLock { field }
-        private set(value) {
-            lock.withLock { field = value }
+    private fun onStateUpdated(oldState: DelegateState, newState: DelegateState) {
+        when (newState) {
+            is Error -> {
+                if (!newState.hasRecovery) {
+                    dispose()
+                } else {
+                    when (oldState) {
+                        is Loading -> delegateDisposable.remove(oldState.task)
+                        is Delivering -> oldState.prefetchTask?.let { delegateDisposable.remove(it) }
+                    }
+                }
+            }
+            is Complete -> dispose()
+            is Delivering -> {
+                when (oldState) {
+                    is Loading -> if (!newState.prefetching) delegateDisposable.remove(oldState.task)
+                    is Delivering -> oldState.prefetchTask?.let { delegateDisposable.remove(it) }
+                }
+            }
         }
+    }
+
+    private val delegateDisposable: CompositeDisposable = CompositeDisposable(
+            Disposables.fromAction {
+                lock.withLock {
+                    debug("We're being disposed!")
+                    if (state !is Error) {
+                        state = Complete
+                    }
+                }
+            }
+    )
+    override fun isDisposed(): Boolean = delegateDisposable.isDisposed
+    override fun dispose() = delegateDisposable.dispose()
 
     init {
         val initialData = pageFactory.initialData
         unboundedQueue = LinkedList(initialData)
         mOffset = initialData.size
+        if (initialData.isNotEmpty()) {
+            state = Delivering(false)
+        }
     }
 
     fun blockingNext(): T? {
-
-        lock.withLock {
+        return lock.withLock {
             try {
-                val size = unboundedQueue.size
-                if (size < pageSize) {
-                    debug("Remaining only %d items", size)
-                    setupRequestNext()
-                }
+                while (true) {
+                    val currentState = state
+                    when (currentState) {
+                        is Error -> {
+                            val size = unboundedQueue.size
+                            when {
+                                size > 0 -> return@withLock unboundedQueue.poll()
+                                currentState.hasRecovery -> {
+                                    debug("Awaiting for recovery error...")
+                                    stateCondition.await()
+                                }
+                                else -> return@withLock null
+                            }
+                        }
+                        is Loading, is Delivering -> {
+                            val size = unboundedQueue.size
+                            if (size < pageSize) {
+                                debug("Remaining only %d items", size)
+                                setupRequestNext()
+                            }
 
-                return if (size > 0) {
-                    unboundedQueue.poll()
-                } else {
-                    while (!completed && null == error && hasActiveRequest()) {
-                        debug("Awaiting for elements to arrive")
-                        itemsCondition.await()
-                    }
+                            return@withLock if (size > 0) unboundedQueue.poll()
+                            else {
+                                while (unboundedQueue.size == 0 && (state is Loading || (state as? Delivering)?.prefetching == true)) {
+                                    debug("Awaiting for elements to arrive")
+                                    stateCondition.await()
+                                }
 
-                    if (unboundedQueue.size == 0) {
-                        null
-                    } else {
-                        unboundedQueue.poll()
+                                return if (unboundedQueue.size > 0) {
+                                    unboundedQueue.poll()
+                                } else {
+                                    if ((state as? Delivering)?.lastDelivered == true) {
+                                        state = Complete
+                                    }
+                                    null
+                                }
+                            }
+                        }
+                        Complete -> throw UnsupportedOperationException("Shouldn't request after completed")
+                        None -> setupRequestNext()
                     }
                 }
+                // We supress the warning, because removing it causes not infer type correctly
+                @Suppress("UNREACHABLE_CODE")
+                return@withLock null
             } catch (e: InterruptedException) {
-                if (null == error) {
-                    error = e
-                }
+                state = Error(e)
                 debug("Blocking next error exit...")
-                return null
+                null
             }
         }
     }
 
-    private fun hasActiveRequest(): Boolean = lock.withLock { null != currentRequest }
+    private fun setupRequestNext() {
+        try {
+            lock.withLock {
 
-    private fun setupRequestNext(): Boolean {
-        return lock.withLock {
-            if (null == currentRequest && !completed && error == null) {
-                currentRequest = Flowable.fromPublisher(pageFactory.nextPageObservable(mOffset, pageSize))
-                        .doFinally {
+                val currentState = state
+                val skip = when (currentState) {
+                    is Loading, Complete -> true
+                    is Error -> !currentState.hasRecovery
+                    is Delivering -> currentState.prefetching || currentState.lastDelivered
+                    None -> false
+                }
+
+                if (skip) {
+                    debug("Skipping next request: current State = %s", currentState)
+                    return
+                }
+
+                if (!isDisposed) {
+                    val subscriber: DisposableSubscriber<T> = object : DisposableSubscriber<T>() {
+                        var delivered: Int = 0
+                        override fun onComplete() {
                             lock.withLock {
-                                currentRequest = null
-                                itemsCondition.signalAll()
-                                debug("Cleanup previous request")
+                                if (delivered > pageSize) {
+                                    Timber.e("Error paging, delivered %d items out of the %d requested", delivered, pageSize)
+                                } else {
+                                    debug("Delivered %d items", delivered)
+                                }
+                                state = Delivering(delivered < pageSize)
+                                mOffset += delivered
+                                debug("Request completed...")
                             }
                         }
-                        .subscribeWith(
-                                object : DisposableSubscriber<T>() {
-                                    var delivered: Int = 0
-                                    override fun onComplete() {
-                                        lock.withLock {
-                                            if (delivered == 0) {
-                                                completed = true
-                                            } else {
-                                                if (delivered > pageSize) {
-                                                    Timber.e("Error paging, delivered %d items out of the %d requested", delivered, pageSize)
-                                                } else {
-                                                    debug("Delivered %d items", delivered)
-                                                }
-                                                mOffset += delivered
-                                            }
-                                            debug("Request completed...")
-                                            dispose()
-                                        }
-                                    }
 
-                                    override fun onNext(t: T) {
-                                        lock.withLock {
-                                            unboundedQueue.offer(t)
-                                            debug("Received new item %s", t)
-                                            delivered++
-                                        }
-                                    }
+                        override fun onNext(t: T) {
+                            lock.withLock {
+                                unboundedQueue.offer(t)
+                                state = Delivering(this)
+                                debug("Received new item %s", t)
+                                delivered++
+                            }
+                        }
 
-                                    override fun onError(e: Throwable) {
-                                        lock.withLock {
-                                            completed = false
-                                            if (null == error) {
-                                                error = e
-                                            }
-                                            debug("Error!!")
-                                            dispose()
-                                        }
-                                    }
-                                }
-                        )
-            } else {
-                debug("Request 'requested' but not started!! (hasRequest: %s, complete: %s, error: %s)", currentRequest != null, completed, error != null)
+                        override fun onError(e: Throwable) {
+                            processError(e)
+                        }
+                    }
+                    delegateDisposable.add(subscriber)
+                    state = Loading(subscriber)
+                    Flowable.fromPublisher(pageFactory.nextPageObservable(mOffset, pageSize)).subscribe(subscriber)
+                } else {
+                    debug("Request 'requested' but not started!! (state: %s, disposed: %s)", state, isDisposed)
+                }
             }
-            currentRequest != null
+        } catch (e: Throwable) {
+            processError(e)
+        }
+    }
+
+    private fun processError(e: Throwable) {
+        rxPagingConfig.errorHandlingModel.processError(
+                PageError(
+                        e,
+                        { state = Error(e) },
+                        {
+                            val pageRetry = PageRetry(e)
+                            debug("Error... retry generated!!")
+                            state = Error(e, pageRetry)
+                            pageRetry
+                        }
+                )
+        )
+    }
+
+    private inner class PageRetry(error: Throwable) : BaseRetry(error) {
+        override fun performRetry() {
+            lock.withLock {
+                setupRequestNext()
+                if (state !is Loading) {
+                    debug("Failed to perform retry!")
+                    state = Error(error)
+                }
+            }
+        }
+
+        override fun abortRetry() {
+            lock.withLock {
+                state = Error(error)
+            }
         }
     }
 }

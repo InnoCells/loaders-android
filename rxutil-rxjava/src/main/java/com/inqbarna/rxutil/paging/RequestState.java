@@ -17,13 +17,16 @@ class RequestState<T> {
     private AtomicBoolean mCompleted;
     private AtomicReference<Throwable> mError;
     private PageFactory<T> mFactory;
+    private final RxPagingConfig paginateConfig;
 
-    RequestState(int pageSize, PageFactory<T> mFactory) {
+    RequestState(int pageSize, PageFactory<T> mFactory, RxPagingConfig paginateConfig) {
         this.pageSize = pageSize;
         this.mFactory = mFactory;
+        this.paginateConfig = paginateConfig;
         mOffset = 0;
         mCompleted = new AtomicBoolean(false);
         mError = new AtomicReference<>(null);
+        // TODO: [DG - 22/03/2018] Maybe add error handling on RxJava1... for now only on RxJava2
     }
 
     boolean getCompleted() {

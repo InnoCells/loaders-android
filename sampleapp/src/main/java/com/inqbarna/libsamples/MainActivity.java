@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -12,10 +13,11 @@ import android.widget.Toast;
 import com.inqbarna.adapters.ItemBinder;
 import com.inqbarna.adapters.RxPaginatedBindingAdapter;
 import com.inqbarna.adapters.TypeMarker;
-import com.inqbarna.adapters.VariableBinding;
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
-import com.inqbarna.rxutil.paging.PageFactories;
+import com.inqbarna.rxutil.paging.ErrorHandlingModel;
+import com.inqbarna.rxutil.paging.PageErrorAction;
 import com.inqbarna.rxutil.paging.PageFactory;
+import com.inqbarna.rxutil.paging.Retry;
 import com.inqbarna.rxutil.paging.RxPagingCallback;
 import com.inqbarna.rxutil.paging.RxPagingConfig;
 
@@ -27,10 +29,8 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import hu.akarnokd.rxjava.interop.RxJavaInterop;
 import io.reactivex.Flowable;
 import io.reactivex.schedulers.Schedulers;
-import rx.Observable;
 import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity {
@@ -40,6 +40,17 @@ public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.progress)
     View progress;
+
+    private ErrorHandlingModel handler = new ErrorHandlingModel() {
+        @Override
+        public void processError(@NotNull PageErrorAction error) {
+            final Retry retry = error.generateRetry();
+
+            final Snackbar snackbar = Snackbar.make(list, error.getError().getMessage(), Snackbar.LENGTH_INDEFINITE);
+            snackbar.setAction("Retry", v -> retry.doRetry());
+            snackbar.show();
+        }
+    };
 
     public static Intent getCallingIntent(Context context) {
         return new Intent(context, MainActivity.class);
@@ -97,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-        mAdapter = new RxPaginatedBindingAdapter<>(mPagingCallback, new RxPagingConfig.Builder().build(), mProgressListener);
+        mAdapter = new RxPaginatedBindingAdapter<>(mPagingCallback, new RxPagingConfig.Builder().withErrorHandlingModel(handler).build(), mProgressListener);
         mAdapter.setItemBinder(mItemBinder);
         list.setAdapter(mAdapter);
 
@@ -112,6 +123,9 @@ public class MainActivity extends AppCompatActivity {
         return result;
     }
 
+    private boolean failedAlready = false;
+
+
     private PageFactory<TestVM> createFactory() {
         return new PageFactory<TestVM>() {
             @NotNull
@@ -125,15 +139,20 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public Publisher<? extends TestVM> nextPageObservable(int startOffset, int pageSize) {
                 Timber.d("[%s] Requested page %d + %d", Thread.currentThread().getName(), startOffset, pageSize);
+
+                if (startOffset > 333 && !failedAlready) {
+                    failedAlready = true;
+//                    throw new RuntimeException("Failed to load items maaaan");
+                    return Flowable.<TestVM>error(new RuntimeException("Failed to load items maaaan")).subscribeOn(Schedulers.io());
+                }
+
                 int endElem = Math.min(startOffset + pageSize, 600);
                 pageSize = endElem - startOffset;
                 Timber.d("[%s] Queueing page request %d + %d", Thread.currentThread().getName(), startOffset, pageSize);
-                final Flowable<TestVM> shared = RxJavaInterop.toV2Flowable(Observable.range(startOffset, pageSize))
+                final Flowable<TestVM> shared = Flowable.range(startOffset, pageSize)
                                                              //                                                         .delaySubscription(1, TimeUnit.SECONDS)
                                                              .subscribeOn(Schedulers.io())
-                                                             .map(TestVM::new)
-                                                             .share();
-                shared.count().subscribe(totalCount -> Timber.d("[%s] Emitted page elements: %d (@offset: %d)", Thread.currentThread().getName(), totalCount, startOffset));
+                                                             .map(TestVM::new);
                 return shared;
             }
         };

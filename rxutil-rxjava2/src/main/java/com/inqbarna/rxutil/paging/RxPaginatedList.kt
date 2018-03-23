@@ -14,7 +14,7 @@ import io.reactivex.subscribers.DisposableSubscriber
 class RxPaginatedList<U> private constructor(
         stream: Flowable<out List<U>>,
         private val mCallbacks: Callbacks,
-        private val mConfig: RxPagingConfig
+        private val rxConfig: RxPagingConfig
 ) : DisposableSubscriber<List<U>>(), PaginatedList<U> {
 
     private val data: MutableList<U> = mutableListOf()

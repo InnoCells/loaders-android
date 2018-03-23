@@ -48,6 +48,7 @@ dependencies {
     })
     implementation "com.android.support:appcompat-v7:${supportLibsVersion}"
     implementation "com.android.support:recyclerview-v7:${supportLibsVersion}"
+    implementation "com.android.support:design:${supportLibsVersion}"
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
 
     implementation "com.jakewharton.timber:timber:$timberVersion"

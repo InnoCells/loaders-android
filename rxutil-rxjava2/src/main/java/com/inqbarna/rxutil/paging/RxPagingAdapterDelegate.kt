@@ -8,6 +8,7 @@ import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.BiConsumer
+import io.reactivex.functions.Consumer
 import io.reactivex.schedulers.Schedulers
 import org.reactivestreams.Publisher
 import java.util.*
@@ -80,17 +81,47 @@ class RxPagingAdapterDelegate<T>(
 
     private fun createStream(factory: PageFactory<T>, displayPageSize: Int, requestPageSize: Int): Flowable<List<T>> {
         return Flowable.generate(
-                Callable<RequestState<T>> { RequestState(requestPageSize, factory) },
+                Callable<RequestState<T>> { RequestState(requestPageSize, factory, paginateConfig as RxPagingConfig) },
                 BiConsumer<RequestState<T>, Emitter<T>> { state, emitter ->
                     val nextItem = state.blockingNext()
-                    val error = state.error
-                    when {
-                        null != nextItem -> emitter.onNext(nextItem)
-                        null != error -> emitter.onError(error)
-                        state.completed -> emitter.onComplete()
+
+                    // Important, we read state after call to blockingNext, as it does change state there!
+                    val loadState = state.state
+
+                    when (loadState) {
+                        is Error -> {
+                            if (loadState.hasRecovery) {
+                                loadState.recovery?.setCallbacks(
+                                        object : RetryCallbacks {
+                                            override fun onRetryRequested() {
+                                                postAction { onRecoveryInProgress(true) }
+                                            }
+                                        }
+                                )
+                                postAction { disableProgressAwaitForRecovery() }
+                            } else {
+                                emitter.onError(loadState.error)
+                                return@BiConsumer
+                            }
+                        }
+                        Complete -> {
+                            emitter.onComplete()
+                            return@BiConsumer
+                        }
                     }
-                }
+
+                    if (null == nextItem) {
+                        throw IllegalStateException("We shouldn't reach this point if value is null")
+                    }
+
+                    emitter.onNext(nextItem)
+                },
+                Consumer { s -> s.dispose() }
         ).subscribeOn(Schedulers.from(PAGE_PREFETCH)).buffer(displayPageSize).observeOn(AndroidSchedulers.mainThread(), false, 1)
+    }
+
+    private fun postAction(action: () -> Unit) {
+        AndroidSchedulers.mainThread().scheduleDirect(action)
     }
 
     private fun setDataStream(stream: Flowable<out List<T>>, endLoad: Boolean) {
@@ -116,4 +147,5 @@ class RxPagingAdapterDelegate<T>(
             return "PagePrefetcher-${counter.getAndIncrement()}"
         }
     }
+
 }
