@@ -150,7 +150,8 @@ class OptionsDelegate : ReadOnlyProperty<RootActivity, List<TargetActivity>> {
     override fun getValue(thisRef: RootActivity, property: KProperty<*>): List<TargetActivity> {
         return listOf(
                 TargetActivity("Paging Adapter", MainActivity.getCallingIntent(thisRef), thisRef),
-                TargetActivity("Numbers Activity", NumbersActivity.getCallingIntent(thisRef), thisRef)
+                TargetActivity("Numbers Activity", NumbersActivity.getCallingIntent(thisRef), thisRef),
+                TargetActivity("Bottom Bar Progress", TestBottomSheetActivity.getCallingIntent(thisRef), thisRef)
         )
     }
 }

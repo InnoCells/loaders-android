@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <data>
+        <variable name="model" type="com.inqbarna.libsamples.TestBottomVM"/>
+    </data>
+    <android.support.design.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <android.support.v7.widget.RecyclerView android:layout_width="match_parent" android:layout_height="match_parent"
+                                                android:id="@+id/the_list"
+                                                app:behavior_scrolling_view_id="@id/the_footer"
+                                                android:adapter="@{model.adapter}"
+                                                app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+                                                app:layout_behavior="android.support.design.widget.BottomOffsetBehavior"
+        />
+
+
+        <com.inqbarna.widgets.FooterLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                           android:id="@+id/the_footer"
+                                           android:layout_gravity="bottom"
+                                           app:footer_hidden="true"
+        >
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:padding="15dp"
+                      android:gravity="center"
+                      android:text="Borrame"
+                      android:textColor="#fff"
+                      android:background="#a22"
+            />
+        </com.inqbarna.widgets.FooterLayout>
+
+    </android.support.design.widget.CoordinatorLayout>
+</layout>

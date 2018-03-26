@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="BottomOffsetBehavior">
+        <attr name="behavior_scrolling_view_id" format="reference"/>
+    </declare-styleable>
+
+    <declare-styleable name="FooterLayout">
+        <attr name="footer_hidden" format="boolean"/>
+    </declare-styleable>
+</resources>

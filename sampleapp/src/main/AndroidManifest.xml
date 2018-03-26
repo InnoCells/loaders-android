@@ -18,6 +18,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".NumbersActivity"/>
+        <activity android:name=".TestBottomSheetActivity"/>
     </application>
 
 </manifest>
