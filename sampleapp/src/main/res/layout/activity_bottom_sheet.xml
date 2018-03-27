@@ -19,12 +19,14 @@
         <com.inqbarna.widgets.FooterLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                                            android:id="@+id/the_footer"
                                            android:layout_gravity="bottom"
+                                           app:footerEnabled="@={model.enabled}"
                                            app:footer_hidden="true"
         >
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                       android:padding="15dp"
                       android:gravity="center"
                       android:text="Borrame"
+                      android:onClick="@{() -> model.onTakeAction(theFooter)}"
                       android:textColor="#fff"
                       android:background="#a22"
             />
