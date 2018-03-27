@@ -1,7 +1,6 @@
 package com.inqbarna.widgets
 
 import android.animation.Animator
-import android.animation.PropertyValuesHolder
 import android.animation.ValueAnimator
 import android.content.Context
 import android.support.design.widget.CoordinatorLayout
@@ -9,7 +8,6 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
-import timber.log.Timber
 
 @CoordinatorLayout.DefaultBehavior(FooterLayout.FooterLayoutBehavior::class)
 class FooterLayout : FrameLayout {
@@ -32,7 +30,6 @@ class FooterLayout : FrameLayout {
     private var showRatio: Float = 0.0f
         set(v) {
             field = maxOf(0.0f, minOf(v, 1.0f))
-            Timber.d("Updated ratio to: %f", field)
             applyTranslation(field)
             if (field == 1.0f) {
                 hidden = false
@@ -101,6 +98,9 @@ class FooterLayout : FrameLayout {
         if (this.isEnabled != enabled) {
             super.setEnabled(enabled)
             applyTranslation(showRatio)
+            if (enabled) {
+                requestLayout()
+            }
             onFooterEnabledListener?.onFooterEnabledState(enabled)
         }
     }
@@ -118,39 +118,41 @@ class FooterLayout : FrameLayout {
             // If we're scrolling down, then steal movement from target
             val measuredHeight = child.measuredHeight
             if (dy < 0 && measuredHeight != 0) {
-                val translationY = child.translationY
-                if (translationY < measuredHeight) {
-                    val displacementY = maxOf(dy, translationY.toInt() - measuredHeight)
-                    doFooterDisplacement(child, displacementY)
+                val currentRatio = child.showRatio
+                var diffRatio = dy diffAsRatioOf measuredHeight
+                if (currentRatio > 0f) {
+                    diffRatio = minOf(currentRatio, diffRatio)
+                    doFooterDisplacement(child, diffRatio)
                     consumed[0] = 0
-                    consumed[1] = displacementY
+                    consumed[1] = diffRatio ratioDiffAsDisplacement measuredHeight
                 }
             }
         }
 
-        private fun doFooterDisplacement(child: FooterLayout, displacementY: Int) {
-            val diffRatio = (-1.0f * displacementY) / child.measuredHeight
+
+
+        private fun doFooterDisplacement(child: FooterLayout, diffRatio: Float) {
             child.showRatio -= diffRatio
         }
 
         override fun onNestedScroll(coordinatorLayout: CoordinatorLayout, child: FooterLayout, target: View, dxConsumed: Int, dyConsumed: Int, dxUnconsumed: Int, dyUnconsumed: Int, type: Int) {
             val measuredHeight = child.measuredHeight
             if (dyUnconsumed > 0 && measuredHeight != 0) {
-                if (child.translationY > 0) {
+                val currentRatio = child.showRatio
+                if (currentRatio < 1.0f) {
                     // user is trying to scroll up, and target view is not doing so..., move footer up
-                    val displacementY = minOf(dyUnconsumed, child.translationY.toInt())
-                    doFooterDisplacement(child, displacementY)
+                    var diffRatio = dyUnconsumed diffAsRatioOf measuredHeight
+                    diffRatio = maxOf(diffRatio, currentRatio - 1.0f)
+                    doFooterDisplacement(child, diffRatio)
                 }
             }
         }
 
         override fun onNestedFling(coordinatorLayout: CoordinatorLayout, child: FooterLayout, target: View, velocityX: Float, velocityY: Float, consumed: Boolean): Boolean {
-            Timber.d("Nested fling... velocityY: %f, consumed: %s", velocityY, consumed)
             return super.onNestedFling(coordinatorLayout, child, target, velocityX, velocityY, consumed)
         }
 
         override fun onNestedPreFling(coordinatorLayout: CoordinatorLayout, child: FooterLayout, target: View, velocityX: Float, velocityY: Float): Boolean {
-            Timber.d("OnPrefling {velocityY: %f}", velocityY)
             return super.onNestedPreFling(coordinatorLayout, child, target, velocityX, velocityY)
         }
 
@@ -163,8 +165,18 @@ class FooterLayout : FrameLayout {
         }
 
         override fun onStartNestedScroll(coordinatorLayout: CoordinatorLayout, child: FooterLayout, directTargetChild: View, target: View, axes: Int, type: Int): Boolean {
-            Timber.d("OnStart Nested scroll {type: %d}", type)
             return (axes or View.SCROLL_AXIS_VERTICAL) != 0
+        }
+
+        companion object {
+            private infix fun Int.diffAsRatioOf(height: Int): Float {
+                check(height > 0) { "Invalid height, expected value greater than 0" }
+                return (-1.0f * this) / height
+            }
+
+            private infix fun Float.ratioDiffAsDisplacement(height: Int): Int {
+                return ((this * height) * -1.0).toInt()
+            }
         }
     }
 }
