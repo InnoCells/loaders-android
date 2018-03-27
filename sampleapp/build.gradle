@@ -43,6 +43,7 @@ android {
 
 dependencies {
     implementation project(':adapters')
+    implementation project(':widgets')
     androidTestImplementation("com.android.support.test.espresso:espresso-core:$espressoVersion", {
         exclude group: 'com.android.support', module: 'support-annotations'
     })

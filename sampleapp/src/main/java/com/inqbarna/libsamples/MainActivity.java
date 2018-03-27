@@ -12,8 +12,8 @@ import android.widget.Toast;
 
 import com.inqbarna.adapters.ItemBinder;
 import com.inqbarna.adapters.RxPaginatedBindingAdapter;
-import com.inqbarna.adapters.TypeMarker;
 import com.inqbarna.common.paging.PaginatedAdapterDelegate;
+import com.inqbarna.libsamples.vm.TestVM;
 import com.inqbarna.rxutil.paging.ErrorHandlingModel;
 import com.inqbarna.rxutil.paging.PageErrorAction;
 import com.inqbarna.rxutil.paging.PageFactory;
@@ -80,24 +80,6 @@ public class MainActivity extends AppCompatActivity {
 
     private ItemBinder mItemBinder = (variableBinding, pos, dataAtPos) -> variableBinding.bindValue(BR.model, dataAtPos);
     private RxPaginatedBindingAdapter<TestVM> mAdapter;
-
-    public static class TestVM implements TypeMarker {
-        public final String value;
-
-        public TestVM(int idx) {
-            value = "Cell number: " + idx;
-        }
-
-        @Override
-        public int getItemType() {
-            return R.layout.main_test_item;
-        }
-
-        @Override
-        public String toString() {
-            return value;
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
