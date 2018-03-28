@@ -34,12 +34,13 @@ public class RxPaginatedBindingAdapter<T extends TypeMarker> extends PaginatedBi
     }
 
     @Override
-    protected PaginatedAdapterDelegate<T> createDelegate(PaginateConfig paginateConfig,
-                                                         @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
+    protected PaginatedAdapterDelegate<T> createDelegate(
+            PaginateConfig paginateConfig,
+            @Nullable PaginatedAdapterDelegate.ProgressHintListener listener, PaginatedAdapterDelegate.ItemRemovedCallback<T> itemRemovedCallback) {
         if (!(paginateConfig instanceof RxPagingConfig)) {
             throw new IllegalArgumentException("Expected to have created RxPaginationConfig specifics");
         }
-        return new RxPagingAdapterDelegate<>(this, mRxPagingCallback, (RxPagingConfig) paginateConfig, listener);
+        return new RxPagingAdapterDelegate<>(this, mRxPagingCallback, (RxPagingConfig) paginateConfig, listener, itemRemovedCallback);
     }
 
 

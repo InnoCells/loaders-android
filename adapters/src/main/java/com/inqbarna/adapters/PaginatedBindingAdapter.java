@@ -21,6 +21,17 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
     private                 PaginatedAdapterDelegate<T>                   mDelegate;
     private                 PaginateConfig                                mPaginateConfig;
 
+    private final PaginatedAdapterDelegate.ItemRemovedCallback<T> itemRemovedCallback = new PaginatedAdapterDelegate.ItemRemovedCallback<T>() {
+        @Override
+        public void onItemRemoved(T item) {
+            onRemovingItem(item);
+        }
+    };
+
+    protected void onRemovingItem(T item) {
+        /* no-op */
+    }
+
     public PaginatedBindingAdapter() {
         this(new PaginateConfig.Builder().build(), null);
     }
@@ -83,13 +94,14 @@ public class PaginatedBindingAdapter<T extends TypeMarker> extends BindingAdapte
 
     protected final PaginatedAdapterDelegate<T> getDelegate() {
         if (null == mDelegate) {
-            mDelegate = createDelegate(mPaginateConfig, mListener);
+            mDelegate = createDelegate(mPaginateConfig, mListener, itemRemovedCallback);
         }
         return mDelegate;
     }
 
     protected PaginatedAdapterDelegate<T> createDelegate(
-            PaginateConfig paginateConfig, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener) {
-        return new PaginatedAdapterDelegate<T>(this, listener, mPaginateConfig);
+            PaginateConfig paginateConfig, @Nullable PaginatedAdapterDelegate.ProgressHintListener listener,
+            PaginatedAdapterDelegate.ItemRemovedCallback<T> itemRemovedCallback) {
+        return new PaginatedAdapterDelegate<T>(this, listener, mPaginateConfig, itemRemovedCallback);
     }
 }

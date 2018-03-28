@@ -26,8 +26,9 @@ class RxPagingAdapterDelegate<T>(
         adapter: RecyclerView.Adapter<*>,
         private val mRxPagingCallback: RxPagingCallback,
         paginateConfig: RxPagingConfig,
-        loadingListener: PaginatedAdapterDelegate.ProgressHintListener?
-) : PaginatedAdapterDelegate<T>(adapter, loadingListener, paginateConfig) {
+        loadingListener: PaginatedAdapterDelegate.ProgressHintListener?,
+        itemRemovedCallback: ItemRemovedCallback<T>
+) : PaginatedAdapterDelegate<T>(adapter, loadingListener, paginateConfig, itemRemovedCallback) {
 
     private val callbacks = object : RxPaginatedList.Callbacks {
         override fun onError(throwable: Throwable) {
@@ -49,6 +50,7 @@ class RxPagingAdapterDelegate<T>(
             }
         }
     }
+
     private var activeDisposable: Disposable? = null
 
     override fun setItemsInternal(items: PaginatedList<T>, endLoad: Boolean) {

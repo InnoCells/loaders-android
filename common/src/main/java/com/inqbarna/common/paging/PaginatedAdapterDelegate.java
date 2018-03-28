@@ -16,6 +16,7 @@ public class PaginatedAdapterDelegate<T> {
 
     public static final int DEFAULT_REQUEST_DISTANCE = 5;
     private final RecyclerView.Adapter mAdapter;
+    private final ItemRemovedCallback<T> itemRemovedCallback;
     private       PaginatedList<T>     mList;
     private       ProgressHintListener mProgressHintListener;
     private       int                  mMinRequestDistance;
@@ -49,6 +50,12 @@ public class PaginatedAdapterDelegate<T> {
     }
 
     public PaginatedAdapterDelegate(RecyclerView.Adapter adapter, @Nullable ProgressHintListener loadingListener, PaginateConfig paginateConfig) {
+        this(adapter, loadingListener, paginateConfig, null);
+    }
+
+    public PaginatedAdapterDelegate(RecyclerView.Adapter adapter, @Nullable ProgressHintListener loadingListener, PaginateConfig paginateConfig,
+            ItemRemovedCallback<T> itemRemovedCallback) {
+        this.itemRemovedCallback = itemRemovedCallback;
         mMinRequestDistance = DEFAULT_REQUEST_DISTANCE;
         mAdapter = adapter;
         mPaginateConfig = paginateConfig;
@@ -88,7 +95,7 @@ public class PaginatedAdapterDelegate<T> {
 
     public void clear() {
         if (null != mList) {
-            mList.clear();
+            mList.clear(itemRemovedCallback);
         }
         mList = null;
         endProgress();
@@ -195,4 +202,8 @@ public class PaginatedAdapterDelegate<T> {
         }
     }
 
+
+    public interface ItemRemovedCallback<T> {
+        void onItemRemoved(T item);
+    }
 }

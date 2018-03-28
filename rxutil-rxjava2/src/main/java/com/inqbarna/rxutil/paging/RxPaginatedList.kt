@@ -2,6 +2,7 @@ package com.inqbarna.rxutil.paging
 
 import android.support.v7.widget.RecyclerView
 import com.inqbarna.common.AdapterSyncList
+import com.inqbarna.common.paging.PaginatedAdapterDelegate
 import com.inqbarna.common.paging.PaginatedList
 import io.reactivex.Flowable
 import io.reactivex.subscribers.DisposableSubscriber
@@ -13,7 +14,7 @@ import io.reactivex.subscribers.DisposableSubscriber
 
 class RxPaginatedList<U> private constructor(
         stream: Flowable<out List<U>>,
-        private val mCallbacks: Callbacks,
+        private val callbacks: Callbacks,
         private val rxConfig: RxPagingConfig
 ) : DisposableSubscriber<List<U>>(), PaginatedList<U> {
 
@@ -55,29 +56,37 @@ class RxPaginatedList<U> private constructor(
         throw UnsupportedOperationException("This is not supported, only internal data flow will be accepted")
     }
 
-    override fun clear() {
-        data.clear()
+    override fun clear(itemRemovedCallback: PaginatedAdapterDelegate.ItemRemovedCallback<U>?) {
+        if (null != itemRemovedCallback) {
+            val iterator = data.iterator()
+            while (iterator.hasNext()) {
+                itemRemovedCallback.onItemRemoved(iterator.next())
+                iterator.remove()
+            }
+        } else {
+            data.clear()
+        }
         completed = true
-        mCallbacks.onCompleted()
+        callbacks.onCompleted()
         dispose()
     }
 
     override fun onComplete() {
         completed = true
-        mCallbacks.onCompleted()
+        callbacks.onCompleted()
         dispose()
     }
 
     override fun onError(e: Throwable) {
         completed = true
-        mCallbacks.onError(e)
+        callbacks.onError(e)
         dispose()
     }
 
     override fun onNext(us: List<U>) {
         val startSize = data.size
         data.addAll(us)
-        mCallbacks.onItemsAdded(startSize, us.size)
+        callbacks.onItemsAdded(startSize, us.size)
     }
 
     override fun editableList(callbackAdapter: RecyclerView.Adapter<*>?): List<U> {

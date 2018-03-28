@@ -57,8 +57,8 @@ public class RxPagingAdapterDelegate<T> extends PaginatedAdapterDelegate<T> {
 
     public RxPagingAdapterDelegate(
             RecyclerView.Adapter adapter, @NonNull RxPagingCallback rxPagingCallback, RxPagingConfig paginateConfig,
-            @Nullable ProgressHintListener loadingListener) {
-        super(adapter, loadingListener, paginateConfig);
+            @Nullable ProgressHintListener loadingListener, ItemRemovedCallback<T> itemRemovedCallback) {
+        super(adapter, loadingListener, paginateConfig, itemRemovedCallback);
         mRxPagingCallback = rxPagingCallback;
     }
 

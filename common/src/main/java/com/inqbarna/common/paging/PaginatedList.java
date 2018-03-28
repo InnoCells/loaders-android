@@ -16,6 +16,6 @@ public interface PaginatedList<U> {
     boolean hasMorePages();
     void requestNext();
     void appendPageItems(Collection<? extends U> items, boolean last);
-    void clear();
+    void clear(@Nullable PaginatedAdapterDelegate.ItemRemovedCallback<U> itemRemovedCallback);
     List<U> editableList(@Nullable RecyclerView.Adapter callbackAdapter);
 }

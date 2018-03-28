@@ -4,6 +4,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 
 import com.inqbarna.common.AdapterSyncList;
+import com.inqbarna.common.paging.PaginatedAdapterDelegate;
 import com.inqbarna.common.paging.PaginatedList;
 
 import java.util.AbstractList;
@@ -79,8 +80,16 @@ public class RxPaginatedList<U> extends Subscriber<List<? extends U>> implements
     }
 
     @Override
-    public void clear() {
-        mData.clear();
+    public void clear(@Nullable PaginatedAdapterDelegate.ItemRemovedCallback<U> callback) {
+        if (null == callback) {
+            mData.clear();
+        } else {
+            final Iterator<U> iterator = mData.iterator();
+            while (iterator.hasNext()) {
+                callback.onItemRemoved(iterator.next());
+                iterator.remove();
+            }
+        }
         mCompleted = true;
         mCallbacks.onCompleted();
         unsubscribe();
