@@ -15,6 +15,7 @@ interface Retry {
 
 interface PageErrorAction {
     val error: Throwable
+    val requestedOffset: Int
     fun abort()
     fun generateRetry(): Retry
 }

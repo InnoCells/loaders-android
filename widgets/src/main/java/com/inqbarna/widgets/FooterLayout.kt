@@ -2,8 +2,11 @@ package com.inqbarna.widgets
 
 import android.animation.Animator
 import android.animation.ValueAnimator
+import android.annotation.TargetApi
 import android.content.Context
+import android.os.Build
 import android.support.design.widget.CoordinatorLayout
+import android.support.v4.view.ViewCompat
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
@@ -11,6 +14,7 @@ import android.widget.FrameLayout
 
 @CoordinatorLayout.DefaultBehavior(FooterLayout.FooterLayoutBehavior::class)
 class FooterLayout : FrameLayout {
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int) : super(context, attrs, defStyleAttr, defStyleRes) {
         initializeComponent(context, attrs, defStyleAttr, defStyleRes)
     }
@@ -19,11 +23,11 @@ class FooterLayout : FrameLayout {
     }
 
     private fun initializeComponent(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int) {
-        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.FooterLayout, defStyleAttr, defStyleAttr)
+        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.FooterLayout, defStyleAttr, defStyleRes)
         val hidden = typedArray.getBoolean(R.styleable.FooterLayout_footer_hidden, false)
         typedArray.recycle()
 
-        showRatio = if (hidden) 0f else 1.0f
+        this.hidden = hidden
         needsUpdate = true
     }
 
@@ -46,14 +50,24 @@ class FooterLayout : FrameLayout {
         }
     }
 
-    private var hidden: Boolean = false
+    var hidden: Boolean = false
+        set(newVal) {
+            if (newVal != field) {
+                field = newVal
+                showRatio = if (field) 0.0f else 1.0f
+                onFooterHideStateChangeListener?.onFooterHideStateChanged(field)
+            }
+        }
+
     private var needsUpdate: Boolean = false
     private var animator: Animator? = null
     var onFooterEnabledListener: OnFooterEnabledListener? = null
+    var onFooterHideStateChangeListener: OnFooterHideStateChangeListener? = null
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val initialHeight = measuredHeight
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        if (needsUpdate) {
+        if (initialHeight != measuredHeight) {
             applyTranslation(showRatio)
             needsUpdate = false
         }
@@ -98,15 +112,17 @@ class FooterLayout : FrameLayout {
         if (this.isEnabled != enabled) {
             super.setEnabled(enabled)
             applyTranslation(showRatio)
-            if (enabled) {
-                requestLayout()
-            }
+            requestLayout()
             onFooterEnabledListener?.onFooterEnabledState(enabled)
         }
     }
 
     interface OnFooterEnabledListener {
         fun onFooterEnabledState(enabled: Boolean)
+    }
+
+    interface OnFooterHideStateChangeListener {
+        fun onFooterHideStateChanged(hidden: Boolean)
     }
 
     class FooterLayoutBehavior : CoordinatorLayout.Behavior<FooterLayout> {
@@ -148,24 +164,8 @@ class FooterLayout : FrameLayout {
             }
         }
 
-        override fun onNestedFling(coordinatorLayout: CoordinatorLayout, child: FooterLayout, target: View, velocityX: Float, velocityY: Float, consumed: Boolean): Boolean {
-            return super.onNestedFling(coordinatorLayout, child, target, velocityX, velocityY, consumed)
-        }
-
-        override fun onNestedPreFling(coordinatorLayout: CoordinatorLayout, child: FooterLayout, target: View, velocityX: Float, velocityY: Float): Boolean {
-            return super.onNestedPreFling(coordinatorLayout, child, target, velocityX, velocityY)
-        }
-
-        override fun onNestedScrollAccepted(coordinatorLayout: CoordinatorLayout, child: FooterLayout, directTargetChild: View, target: View, axes: Int, type: Int) {
-            super.onNestedScrollAccepted(coordinatorLayout, child, directTargetChild, target, axes, type)
-        }
-
-        override fun onStopNestedScroll(coordinatorLayout: CoordinatorLayout, child: FooterLayout, target: View, type: Int) {
-            super.onStopNestedScroll(coordinatorLayout, child, target, type)
-        }
-
         override fun onStartNestedScroll(coordinatorLayout: CoordinatorLayout, child: FooterLayout, directTargetChild: View, target: View, axes: Int, type: Int): Boolean {
-            return (axes or View.SCROLL_AXIS_VERTICAL) != 0
+            return (axes or ViewCompat.SCROLL_AXIS_VERTICAL) != 0
         }
 
         companion object {

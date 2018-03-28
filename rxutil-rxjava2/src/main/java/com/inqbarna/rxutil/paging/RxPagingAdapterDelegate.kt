@@ -83,30 +83,39 @@ class RxPagingAdapterDelegate<T>(
         return Flowable.generate(
                 Callable<RequestState<T>> { RequestState(requestPageSize, factory, paginateConfig as RxPagingConfig) },
                 BiConsumer<RequestState<T>, Emitter<T>> { state, emitter ->
-                    val nextItem = state.blockingNext()
+                    var nextItem: T?
 
-                    // Important, we read state after call to blockingNext, as it does change state there!
-                    val loadState = state.state
+                    acquireNext@ while (true) {
+                        nextItem = state.blockingNext()
 
-                    when (loadState) {
-                        is Error -> {
-                            if (loadState.hasRecovery) {
-                                loadState.recovery?.setCallbacks(
-                                        object : RetryCallbacks {
-                                            override fun onRetryRequested() {
-                                                postAction { onRecoveryInProgress(true) }
+                        // Important, we read state after call to blockingNext, as it does change state there!
+                        val loadState = state.state
+
+                        when (loadState) {
+                            is Error -> {
+                                if (loadState.hasRecovery) {
+                                    loadState.recovery?.setCallbacks(
+                                            object : RetryCallbacks {
+                                                override fun onRetryRequested() {
+                                                    postAction { onRecoveryInProgress(true) }
+                                                }
+
+                                                override fun onRetryAborted() {
+                                                    postAction { onRecoveryInProgress(false) }
+                                                }
                                             }
-                                        }
-                                )
-                                postAction { disableProgressAwaitForRecovery() }
-                            } else {
-                                emitter.onError(loadState.error)
+                                    )
+                                    postAction { disableProgressAwaitForRecovery() }
+                                } else {
+                                    emitter.onError(loadState.error)
+                                    return@BiConsumer
+                                }
+                            }
+                            Complete -> {
+                                emitter.onComplete()
                                 return@BiConsumer
                             }
-                        }
-                        Complete -> {
-                            emitter.onComplete()
-                            return@BiConsumer
+                            else -> break@acquireNext
                         }
                     }
 

@@ -122,9 +122,9 @@ class BottomOffsetBehavior : CoordinatorLayout.Behavior<View> {
     private fun layoutChild(parent: CoordinatorLayout, child: View,
                             layoutDirection: Int) {
         val dependencies = parent.getDependencies(child)
-        val header = findFirstDependency(dependencies)
+        val footer = findFirstDependency(dependencies)
 
-        if (header != null) {
+        if (footer != null) {
             val lp = child.layoutParams as CoordinatorLayout.LayoutParams
             val available = tempRect1
             available.set(parent.paddingLeft + lp.leftMargin,

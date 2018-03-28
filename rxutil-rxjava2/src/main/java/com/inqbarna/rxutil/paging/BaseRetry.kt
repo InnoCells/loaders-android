@@ -11,5 +11,11 @@ internal abstract class BaseRetry(protected val error: Throwable) : ListenableRe
         callbacks?.onRetryRequested()
     }
 
-    abstract fun performRetry()
+    final override fun abortRetry() {
+        performAbort()
+        callbacks?.onRetryAborted()
+    }
+
+    protected abstract fun performAbort()
+    protected abstract fun performRetry()
 }

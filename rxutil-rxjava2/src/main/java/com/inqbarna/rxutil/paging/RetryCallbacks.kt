@@ -6,4 +6,5 @@ package com.inqbarna.rxutil.paging
  */
 internal interface RetryCallbacks {
     fun onRetryRequested()
+    fun onRetryAborted()
 }

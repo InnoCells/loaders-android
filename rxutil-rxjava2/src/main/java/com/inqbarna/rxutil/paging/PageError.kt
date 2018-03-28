@@ -2,7 +2,12 @@ package com.inqbarna.rxutil.paging
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal class PageError(override val error: Throwable, private val abortFun: () -> Unit, private val retry: () -> Retry) : AtomicBoolean(false), PageErrorAction {
+internal class PageError(
+        override val requestedOffset: Int,
+        override val error: Throwable,
+        private val abortFun: () -> Unit,
+        private val retry: () -> Retry
+) : AtomicBoolean(false), PageErrorAction {
     override fun generateRetry(): Retry {
         if (compareAndSet(false, true)) {
             return retry()

@@ -202,6 +202,7 @@ internal class RequestState<T>(val pageSize: Int, private val pageFactory: PageF
     private fun processError(e: Throwable) {
         rxPagingConfig.errorHandlingModel.processError(
                 PageError(
+                        mOffset,
                         e,
                         { state = Error(e) },
                         {
@@ -225,7 +226,7 @@ internal class RequestState<T>(val pageSize: Int, private val pageFactory: PageF
             }
         }
 
-        override fun abortRetry() {
+        override fun performAbort() {
             lock.withLock {
                 state = Error(error)
             }
