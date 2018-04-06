@@ -12,15 +12,17 @@ import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ObjectArrays;
+import com.inqbarna.adapters.internal.DeferredOperation;
+import com.inqbarna.adapters.internal.DeferredOperation.Type;
 import com.inqbarna.common.AdapterSyncList;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,16 +62,22 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     private List<T>                 mData;
     private DiffCallback<? super T> diffCallback;
     private final AtomicReference<Disposable> updateTask;
+    private final Executor offThreadExecutor;
 
     protected BasicBindingAdapter() {
         this(null);
     }
 
     public BasicBindingAdapter(ItemBinder binder) {
+        this(binder, OFF_THREAD_EXECUTOR);
+    }
+
+    public BasicBindingAdapter(ItemBinder binder, Executor offThreadExecutor) {
         setItemBinder(binder);
         mData = new ArrayList<>();
         diffCallback = identityDiff();
         updateTask = new AtomicReference<>();
+        this.offThreadExecutor = offThreadExecutor;
     }
 
     public void setItems(List<? extends T> items) {
@@ -95,40 +103,83 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     }
 
     public Single<List<? extends T>> updateItems(@NonNull List<? extends T> items) {
-        return new Updater<>(this, items);
+        return new Updater<>(this, items, offThreadExecutor);
     }
 
-    private void onUpdateFinished(@NonNull DiffUtil.DiffResult diffResult, @NonNull List<? extends T> targetList) {
+    private void onUpdateFinished(@NonNull DiffUtil.DiffResult diffResult, @NonNull List<? extends T> targetList, UpdateLogger logger) {
+
+        // Initialize lists...
+        final int originalSize = mData.size();
+        List<DeferredOperation<T>> operations = new ArrayList<>(originalSize);
+        for (int i = 0; i < originalSize; i++) {
+            operations.add(new DeferredOperation<>(Type.Unchanged));
+        }
+
+        AtomicBoolean hasMoves = new AtomicBoolean(false);
+
+
         diffResult.dispatchUpdatesTo(new ListUpdateCallback() {
+
             @Override
             public void onInserted(int position, int count) {
-                printDbg("%d Items inserted at %d", count, position);
-                mData.addAll(position, targetList.subList(position, position + count));
+                logger.debugMessage("%d Items inserted at %d", count, position);
                 notifyItemRangeInserted(addOffsets(position), count);
+                while (count > 0) {
+                    operations.add(position, new DeferredOperation<>(Type.Add));
+                    position++;
+                    count--;
+                }
             }
 
             @Override
             public void onRemoved(int position, int count) {
-                printDbg("%d Items removed from pos %d", count, position);
-                final List<T> toRemove = mData.subList(position, position + count);
-                for (T item : toRemove) {
-                    onRemovingElement(item);
-                }
-                toRemove.clear();
+                logger.debugMessage("%d Items removed from pos %d", count, position);
                 notifyItemRangeRemoved(addOffsets(position), count);
+                while (count > 0) {
+                    final DeferredOperation<T> tDeferredOperation = operations.get(position);
+                    if (tDeferredOperation.getType() != Type.Unchanged) {
+                        throw new IllegalStateException("Cannot remove this position, because already changed!!");
+                    }
+                    operations.remove(position);
+                    operations.add(position, new DeferredOperation<>(Type.Remove));
+                    count--;
+                    position++;
+                }
             }
 
             @Override
             public void onMoved(int fromPosition, int toPosition) {
-                printDbg("Item moved %d --> %d", fromPosition, toPosition);
-                final T item = mData.remove(fromPosition);
-                mData.add(toPosition, item);
+                logger.debugMessage("Item moved %d --> %d", fromPosition, toPosition);
                 notifyItemMoved(addOffsets(fromPosition), addOffsets(toPosition));
+                final T item = mData.get(fromPosition);
+                hasMoves.set(true);
+                replaceWith(fromPosition, toPosition, item);
+            }
+
+            private void replaceWith(int fromPosition, int toPosition, T item) {
+                if (fromPosition != toPosition) {
+                    final DeferredOperation<T> remove = operations.remove(toPosition);
+                    if (remove.getType() != Type.Unchanged) {
+                        throw new IllegalStateException("Cannot remove this position, because already changed!!");
+                    }
+
+                    // This is a move
+                    operations.add(toPosition, new DeferredOperation<>(Type.MoveFrom, item, toPosition - fromPosition));
+
+                } else {
+                    // This is just a change
+                    final DeferredOperation<T> remove = operations.remove(fromPosition);
+                    if (remove.getType() != Type.Unchanged) {
+                        throw new IllegalStateException("Cannot remove this position, because already changed!!");
+                    }
+                    operations.add(toPosition, new DeferredOperation<>(Type.Replace, item));
+                }
             }
 
             @Override
             public void onChanged(int position, int count, Object payload) {
-                printDbg("%d items changed at position %d", count, position);
+                logger.debugMessage("%d items changed at position %d", count, position);
+                notifyItemRangeChanged(addOffsets(position), count, payload);
 
                 if (null != payload) {
                     List<? extends T> data;
@@ -142,23 +193,72 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
                         throw new IllegalArgumentException("Payload size is " + data.size() + " but count is: " + count);
                     }
 
+                    logger.dbgPrintList(data, "Changed payload", "{PL}");
 
-                    final ListIterator<T> replacements = mData.listIterator(position);
-                    int targetReplaces = count;
+
                     final Iterator<? extends T> replacementIter = data.iterator();
-                    while (replacements.hasNext() && targetReplaces > 0) {
-                        final T next = replacements.next();
-                        onRemovingElement(next);
-                        replacements.set(replacementIter.next());
-                        targetReplaces--;
+                    while (replacementIter.hasNext()) {
+                        replaceWith(position, position, replacementIter.next());
+                        position++;
                     }
                 }
-                notifyItemRangeChanged(addOffsets(position), count, payload);
+
             }
         });
+
+
+        // Apply results then!
+
+        // Moves first, then the rest
+        if (hasMoves.get()) {
+            for (int i = 0, sz = operations.size(); i < sz; i++) {
+                final DeferredOperation<T> operation = operations.get(i);
+                switch (operation.getType()) {
+                    case MoveFrom: {
+                        final T data = mData.remove(i - operation.getMoveFromOffset());
+                        mData.add(i, data);
+                    }
+                    break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        for (int i = 0, sz = operations.size(); i < sz; i++) {
+            final DeferredOperation<T> operation = operations.get(i);
+            switch (operation.getType()) {
+                case Unchanged:
+                    /* no-op */
+                    break;
+                case Add: {
+                    T data = operation.getData();
+                    if (data == null) {
+                        data = targetList.get(i);
+                    }
+                    mData.add(i, data);
+                }
+                break;
+                case Remove:
+                    mData.remove(i);
+                    break;
+                case MoveFrom:
+                    /* no-op */
+                break;
+                case Replace: {
+                    final T data = operation.getData();
+                    if (null == data) {
+                        throw new IllegalArgumentException("A replace is only valid with value");
+                    }
+                    mData.remove(i);
+                    mData.add(i, data);
+                }
+                break;
+            }
+        }
     }
 
-    private static class Updater<K extends TypeMarker> extends Single<List<? extends K>> implements Runnable {
+    private static class Updater<K extends TypeMarker> extends Single<List<? extends K>> implements Runnable, UpdateLogger {
 
         private final List<? extends K>      targetList;
         private final BasicBindingAdapter<K> adapter;
@@ -166,6 +266,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         private final DiffCallback<? super K> diffCallback;
         private DiffUtil.DiffResult diffResult;
         private Disposable mDisposable;
+        private final Executor executor;
 
         private static final AtomicInteger DBG_COUNTER = new AtomicInteger(0);
 
@@ -208,17 +309,19 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         };
         private SingleObserver<? super List<? extends K>> mObserver;
 
-        public Updater(@NonNull BasicBindingAdapter<K> adapter, @NonNull List<? extends K> targetList) {
+        public Updater(@NonNull BasicBindingAdapter<K> adapter, @NonNull List<? extends K> targetList, Executor executor) {
             debugName = "Updater-" + DBG_COUNTER.getAndIncrement();
             this.targetList = ImmutableList.copyOf(Preconditions.checkNotNull(targetList, "target list needs to be not null"));
             this.adapter = Preconditions.checkNotNull(adapter, "adapter may not be null");
             srcList = ImmutableList.copyOf(adapter.mData);
             diffCallback = adapter.diffCallback;
+            this.executor = executor;
 
             debugMessage("Created (%s)", this);
         }
 
-        protected void debugMessage(String format, Object ...args) {
+        @Override
+        public void debugMessage(String format, Object... args) {
             if (!DEBUG) {
                 return;
             }
@@ -254,7 +357,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         private void startProcess() {
             if (!mDisposable.isDisposed()) {
                 debugMessage("scheduling process");
-                OFF_THREAD_EXECUTOR.execute(this);
+                executor.execute(this);
             } else {
                 debugMessage("Job cancelled before starting it!");
             }
@@ -282,8 +385,8 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
                 if (!mDisposable.isDisposed()) {
                     dbgPrintList(adapter.mData, "Items in original list", "-");
                     dbgPrintList(targetList, "Items in desired list", "+");
-                    adapter.onUpdateFinished(diffResult, targetList);
-                    dbgPrintList(targetList, "Items in resulting list", "==>");
+                    adapter.onUpdateFinished(diffResult, targetList, this);
+                    dbgPrintList(adapter.mData, "Items in resulting list", "==>");
                     assert targetList.size() == adapter.mData.size();
                     mObserver.onSuccess(adapter.mData);
                 } else {
@@ -299,7 +402,8 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
             }
         }
 
-        protected void dbgPrintList(List<? extends K> list, String title, String symbol) {
+        @Override
+        public void dbgPrintList(List<?> list, String title, String symbol) {
             int originalSize = list.size();
             debugMessage("%s: %d", title, originalSize);
             for (int i = 0; i < originalSize; i++) {

@@ -8,12 +8,18 @@ import com.inqbarna.adapters.BasicItemBinder
 import com.inqbarna.adapters.TypeMarker
 import io.reactivex.functions.Predicate
 import io.reactivex.observers.TestObserver
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.android.util.concurrent.RoboExecutorService
+import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLog
+import timber.log.Timber
+import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 
 /**
@@ -21,6 +27,7 @@ import java.util.concurrent.TimeUnit
  * @version 1.0 23/02/2018
  */
 @RunWith(RobolectricTestRunner::class)
+@Config(constants = BuildConfig::class)
 class BindingAdapterTest {
 
 
@@ -44,15 +51,25 @@ class BindingAdapterTest {
 
     lateinit var adapter: BasicBindingAdapter<TestItems>
     lateinit var observer: TestAdapterObserver
+    lateinit var offThreadExecutor: ExecutorService
 
     @Before
     fun setupAdapter() {
+        ShadowLog.stream = System.out
         observer = TestAdapterObserver()
-        adapter = BasicBindingAdapter<TestItems>(BasicItemBinder(0)).also {
+        offThreadExecutor = RoboExecutorService()
+        adapter = BasicBindingAdapter<TestItems>(BasicItemBinder(0), offThreadExecutor).also {
             it.setDiffCallback(DiffCallback)
             it.setItems(INITIAL_DATA_SET)
             it.registerAdapterDataObserver(observer)
         }
+    }
+
+    @After
+    fun tearDown() {
+        ShadowLog.reset()
+        Timber.uprootAll()
+        offThreadExecutor.shutdown()
     }
 
     private object DiffCallback : BasicBindingAdapter.DiffCallback<TestItems> {
@@ -63,6 +80,85 @@ class BindingAdapterTest {
         override fun areContentEquals(a: TestItems, b: TestItems): Boolean {
             return a.text == b.text
         }
+    }
+
+    @Test
+    fun testSecondWeHave() {
+        adapter.setItems(listOf(
+                TestItems(1, "Second")
+        ))
+
+        val newItems = listOf(
+                TestItems(0, "First"),
+                TestItems(1, "Changed second"),
+                TestItems(2, "Third"),
+                TestItems(3, "Fourth")
+        )
+
+        val resultsObserver = TestObserver<List<TestItems>>()
+        adapter.updateItems(newItems).subscribe(resultsObserver)
+
+        resultsObserver.assertComplete()
+        resultsObserver.assertValue(Predicate {
+            assertThat(it).containsAllIn(newItems).inOrder()
+            return@Predicate true
+        })
+
+    }
+
+    @Test
+    fun testAnotherCombination() {
+        adapter.setItems(listOf(
+                TestItems(0, "A"),
+                TestItems(1, "B"),
+                TestItems(2, "C"),
+                TestItems(3, "D"),
+                TestItems(4, "E")
+        ))
+
+        val newItems = listOf(
+                TestItems(0, "A"),
+                TestItems(2, "C"),
+                TestItems(4, "E"),
+                TestItems(3, "D")
+        )
+
+        val resultsObserver = TestObserver<List<TestItems>>()
+        adapter.updateItems(newItems).subscribe(resultsObserver)
+
+        resultsObserver.assertComplete()
+        resultsObserver.assertValue(Predicate {
+            assertThat(it).containsAllIn(newItems).inOrder()
+            return@Predicate true
+        })
+    }
+
+    @Test
+    fun testMovesOnly() {
+        val newItems = listOf(
+                TestItems(1, "texto 1"),
+                TestItems(8, "texto 8"),
+                TestItems(2, "texto 2"),
+                TestItems(3, "texto 3"),
+                TestItems(4, "texto 4"),
+                TestItems(5, "texto 5"),
+                TestItems(6, "texto 6"),
+                TestItems(7, "texto 7"),
+                TestItems(9, "texto 9"),
+                TestItems(0, "texto 0"),
+                TestItems(10, "texto 10"),
+                TestItems(12, "texto 12"),
+                TestItems(11, "texto 11")
+        )
+
+        val resultsObserver = TestObserver<List<TestItems>>()
+        adapter.updateItems(newItems).subscribe(resultsObserver)
+
+        resultsObserver.assertComplete()
+        resultsObserver.assertValue(Predicate {
+            assertThat(it).containsAllIn(newItems).inOrder()
+            return@Predicate true
+        })
     }
 
     @Test
@@ -90,7 +186,6 @@ class BindingAdapterTest {
         val resultsObserver = TestObserver<List<TestItems>>()
         adapter.updateItems(newList).subscribe(resultsObserver)
 
-        resultsObserver.awaitTerminalEvent(5, TimeUnit.SECONDS)
         resultsObserver.assertComplete()
 
         resultsObserver.assertValue(Predicate {
@@ -101,10 +196,10 @@ class BindingAdapterTest {
         observer.assertThat().containsExactly(Event(ObserverEventKind.ADD, 6..9), Event(ObserverEventKind.CHANGE, 3..3), Event(ObserverEventKind.CHANGE, 8..8), Event(ObserverEventKind.CHANGE, 9..9))
     }
 
-    @Test
-    fun testRecyclingOnClear() {
-        val numbersActivity = Robolectric.setupActivity(NumbersActivity::class.java)
-    }
+//    @Test
+//    fun testRecyclingOnClear() {
+//        val numbersActivity = Robolectric.setupActivity(NumbersActivity::class.java)
+//    }
 
     @Test
     fun testUpdateSequenceAdd4Before() {
@@ -118,7 +213,7 @@ class BindingAdapterTest {
         val resultsObserver = TestObserver<List<TestItems>>()
         adapter.updateItems(newList).subscribe(resultsObserver)
 
-        resultsObserver.awaitTerminalEvent(5, TimeUnit.HOURS)
+//        resultsObserver.awaitTerminalEvent(5, TimeUnit.SECONDS)
         resultsObserver.assertComplete()
 
         resultsObserver.assertValue(Predicate {
