@@ -196,10 +196,28 @@ class BindingAdapterTest {
         observer.assertThat().containsExactly(Event(ObserverEventKind.ADD, 6..9), Event(ObserverEventKind.CHANGE, 3..3), Event(ObserverEventKind.CHANGE, 8..8), Event(ObserverEventKind.CHANGE, 9..9))
     }
 
-//    @Test
-//    fun testRecyclingOnClear() {
-//        val numbersActivity = Robolectric.setupActivity(NumbersActivity::class.java)
-//    }
+    @Test
+    fun anotherConflictingCase() {
+        adapter.setItems(listOf(
+                TestItems(0, "A"),
+                TestItems(1, "B")
+        ))
+
+        val newItems = listOf(
+                TestItems(1, "B"),
+                TestItems(0, "A"),
+                TestItems(4, "E")
+        )
+
+        val resultsObserver = TestObserver<List<TestItems>>()
+        adapter.updateItems(newItems).subscribe(resultsObserver)
+
+        resultsObserver.assertComplete()
+        resultsObserver.assertValue(Predicate {
+            assertThat(it).containsAllIn(newItems).inOrder()
+            return@Predicate true
+        })
+    }
 
     @Test
     fun testUpdateSequenceAdd4Before() {

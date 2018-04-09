@@ -112,7 +112,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
         final int originalSize = mData.size();
         List<DeferredOperation<T>> operations = new ArrayList<>(originalSize);
         for (int i = 0; i < originalSize; i++) {
-            operations.add(new DeferredOperation<>(Type.Unchanged));
+            operations.add(new DeferredOperation<>(Type.Keep, mData.get(i)));
         }
 
         AtomicBoolean hasMoves = new AtomicBoolean(false);
@@ -125,7 +125,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
                 logger.debugMessage("%d Items inserted at %d", count, position);
                 notifyItemRangeInserted(addOffsets(position), count);
                 while (count > 0) {
-                    operations.add(position, new DeferredOperation<>(Type.Add));
+                    operations.add(position, new DeferredOperation<>(Type.Placeholder));
                     position++;
                     count--;
                 }
@@ -136,12 +136,7 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
                 logger.debugMessage("%d Items removed from pos %d", count, position);
                 notifyItemRangeRemoved(addOffsets(position), count);
                 while (count > 0) {
-                    final DeferredOperation<T> tDeferredOperation = operations.get(position);
-                    if (tDeferredOperation.getType() != Type.Unchanged) {
-                        throw new IllegalStateException("Cannot remove this position, because already changed!!");
-                    }
                     operations.remove(position);
-                    operations.add(position, new DeferredOperation<>(Type.Remove));
                     count--;
                     position++;
                 }
@@ -151,28 +146,19 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
             public void onMoved(int fromPosition, int toPosition) {
                 logger.debugMessage("Item moved %d --> %d", fromPosition, toPosition);
                 notifyItemMoved(addOffsets(fromPosition), addOffsets(toPosition));
-                final T item = mData.get(fromPosition);
                 hasMoves.set(true);
-                replaceWith(fromPosition, toPosition, item);
+                replaceWith(fromPosition, toPosition, null);
             }
 
             private void replaceWith(int fromPosition, int toPosition, T item) {
                 if (fromPosition != toPosition) {
-                    final DeferredOperation<T> remove = operations.remove(toPosition);
-                    if (remove.getType() != Type.Unchanged) {
-                        throw new IllegalStateException("Cannot remove this position, because already changed!!");
-                    }
-
                     // This is a move
-                    operations.add(toPosition, new DeferredOperation<>(Type.MoveFrom, item, toPosition - fromPosition));
-
+                    final DeferredOperation<T> remove = operations.remove(fromPosition);
+                    operations.add(toPosition, remove);
                 } else {
                     // This is just a change
-                    final DeferredOperation<T> remove = operations.remove(fromPosition);
-                    if (remove.getType() != Type.Unchanged) {
-                        throw new IllegalStateException("Cannot remove this position, because already changed!!");
-                    }
-                    operations.add(toPosition, new DeferredOperation<>(Type.Replace, item));
+                    operations.remove(fromPosition);
+                    operations.add(toPosition, new DeferredOperation<>(Type.Keep, item));
                 }
             }
 
@@ -208,49 +194,23 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
 
         // Apply results then!
-
-        // Moves first, then the rest
-        if (hasMoves.get()) {
-            for (int i = 0, sz = operations.size(); i < sz; i++) {
-                final DeferredOperation<T> operation = operations.get(i);
-                switch (operation.getType()) {
-                    case MoveFrom: {
-                        final T data = mData.remove(i - operation.getMoveFromOffset());
-                        mData.add(i, data);
-                    }
-                    break;
-                    default:
-                        break;
-                }
-            }
-        }
+        mData.clear();
 
         for (int i = 0, sz = operations.size(); i < sz; i++) {
             final DeferredOperation<T> operation = operations.get(i);
+            final T operationData = operation.getData();
             switch (operation.getType()) {
-                case Unchanged:
-                    /* no-op */
+                case Keep:
+                    if (null == operationData) {
+                        throw new IllegalArgumentException("Operation Data has not been assigned yet!! shouldn't happen here");
+                    }
+                    mData.add(operationData);
                     break;
-                case Add: {
-                    T data = operation.getData();
+                case Placeholder: {
+                    T data = operationData;
                     if (data == null) {
                         data = targetList.get(i);
                     }
-                    mData.add(i, data);
-                }
-                break;
-                case Remove:
-                    mData.remove(i);
-                    break;
-                case MoveFrom:
-                    /* no-op */
-                break;
-                case Replace: {
-                    final T data = operation.getData();
-                    if (null == data) {
-                        throw new IllegalArgumentException("A replace is only valid with value");
-                    }
-                    mData.remove(i);
                     mData.add(i, data);
                 }
                 break;
