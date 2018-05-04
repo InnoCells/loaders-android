@@ -106,7 +106,7 @@ abstract class BindingPagerAdapter<T : TypeMarker>() : PagerAdapter() {
 
 internal class PagerAdapterHelper(var bindingComponent : DataBindingComponent? = null) {
     internal lateinit var binder : ItemBinder
-    fun isViewFromObject(view : View?, any : Any?) : Boolean = if (any is ViewDataBinding) any == DataBindingUtil.getBinding(view) else false
+    fun isViewFromObject(view : View, any : Any?) : Boolean = if (any is ViewDataBinding) any == DataBindingUtil.getBinding(view) else false
 
     fun instantiateItem(container : ViewGroup?, position : Int, dataAt : TypeMarker) : ViewDataBinding {
         val viewDataBinding = DataBindingUtil.inflate<ViewDataBinding>(LayoutInflater.from(container!!.context), dataAt.itemType, container, true, bindingComponent)
