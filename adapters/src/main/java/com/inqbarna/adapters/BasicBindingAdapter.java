@@ -12,7 +12,7 @@ import java.util.List;
 
 public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
     public static final int INVALID_IDX = -1;
-    private List<T> mData;
+    private List<T> mData = new ArrayList<>();
 
     protected BasicBindingAdapter() {
         this(null);
@@ -20,7 +20,6 @@ public class BasicBindingAdapter<T extends TypeMarker> extends BindingAdapter {
 
     public BasicBindingAdapter(ItemBinder binder) {
         setItemBinder(binder);
-        mData = new ArrayList<>();
     }
 
     public void setItems(List<? extends T> items) {
