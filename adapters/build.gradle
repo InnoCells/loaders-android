@@ -35,9 +35,6 @@ dependencies {
     api group: 'com.google.code.findbugs', name: 'jsr305', version: '2.0.1'
     api group: 'io.reactivex.rxjava2', name: 'rxjava', version: rxJava2Version
 
-    // Android databinding
-    kapt "com.android.databinding:compiler:$plugin_version"
-
     compileOnly "com.jakewharton.timber:timber:${timberVersion}"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation "com.android.support:support-v4:${supportLibsVersion}"
